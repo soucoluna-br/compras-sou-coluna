@@ -1,0 +1,50 @@
+# Publica o site na Cloudflare Pages (projeto "compras-sou-coluna") a cada mudança na branch main.
+# Precisa de um segredo no GitHub (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   token da Cloudflare com "Cloudflare Pages: Edit" e "D1: Edit"
+# O ID da conta é descoberto pelo próprio token. O banco (binding DB) e a chave da franqueadora
+# (CODIGO_FRANQUEADORA) ficam configurados no projeto da Cloudflare, não aqui.
+name: Publicar o site
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["backups/**", "**.md"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publicar-site
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir o token da Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::warning::Site não publicado: falta o segredo CLOUDFLARE_API_TOKEN no GitHub (veja o README)."
+            echo "PULAR=1" >> "$GITHUB_ENV"; exit 0
+          fi
+          ID=$(curl -sS https://api.cloudflare.com/client/v4/accounts -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq -r '.result[0].id // empty')
+          if [ -z "$ID" ]; then echo "::error::O token da Cloudflare não funcionou (confira as permissões)."; exit 1; fi
+          echo "::add-mask::$ID"
+          echo "CLOUDFLARE_ACCOUNT_ID=$ID" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        if: env.PULAR != '1'
+      - uses: actions/setup-node@v4
+        if: env.PULAR != '1'
+        with:
+          node-version: 22
+      - name: Instalar o wrangler
+        if: env.PULAR != '1'
+        run: npm ci --prefix ferramentas
+      - name: Publicar na Cloudflare Pages
+        if: env.PULAR != '1'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: ferramentas/node_modules/.bin/wrangler pages deploy site --project-name compras-sou-coluna --branch main --commit-dirty=true
