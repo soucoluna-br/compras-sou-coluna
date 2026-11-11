@@ -142,6 +142,14 @@ def main():
         pg.fill("#f-resp", "Ana Souza")
         pg.wait_for_function(f"fetch('/api/unidades/{UA}/compras').then(r=>r.json()).then(j=>j.unidade.responsavel==='Ana Souza')", timeout=8000, polling=500)
         ok(True, "responsável digitado no guia vai para o banco")
+        ok("sugestões" in pg.inner_text(".aviso"), "aviso de que quantidades e valores são sugestões")
+        ok(card(pg, "enxoval-geladeira").locator(".price .l").inner_text().lower() == "valor estimado", "preço aparece como valor estimado")
+        card(pg, "enxoval-geladeira").locator('[data-q="1"]').click()
+        esperar_salvo(pg)
+        ok(card(pg, "enxoval-geladeira").locator(".pv").inner_text() == "R$ 4.000" and pg.inner_text("#k-prev") == "R$ 304.638",
+           "aumentar a quantidade recalcula o valor estimado do item e o total previsto")
+        itens = {i["item_id"]: i for i in api(pg, f"unidades/{UA}/compras")["itens"]}
+        ok(itens["enxoval-geladeira"]["quantidade"] == 2, "quantidade ajustada vai para o banco")
         pg.evaluate("scrollTo(0,0)")
         tela(pg, "guia-computador")
 
@@ -149,6 +157,8 @@ def main():
         ok("done" in card(pg, "enxoval-geladeira").get_attribute("class") and card(pg, "enxoval-balde").locator(".money input").input_value() == "1.234,56",
            "depois de recarregar, compras e valores continuam")
         ok(pg.inner_text("#k-items") == "2 de 130" and pg.input_value("#f-resp") == "Ana Souza", "andamento e responsável vêm do banco")
+        ok(card(pg, "enxoval-geladeira").locator(".qtd input").input_value() == "2" and "Sugestão da rede: 1" in card(pg, "enxoval-geladeira").locator(".sug").inner_text(),
+           "quantidade ajustada continua depois de recarregar, mostrando a sugestão original")
 
         # ---------- filtros, ordem e visualização ----------
         visiveis = lambda: pg.locator("#sections .card:visible").count()
@@ -213,6 +223,7 @@ def main():
         tela(pg, "painel-computador")
         ca = pg.locator(f'.un[data-id="{UA}"]')
         ok("3 de 130" in ca.inner_text() and "Ana Souza" in ca.inner_text() and "1 acesso" in ca.inner_text(), "painel mostra andamento, responsável e acessos")
+        ok(pg.evaluate(f"UNIDADES.find(u=>u.id==='{UA}').st.prev") == 304638.4, "painel usa a quantidade ajustada pela unidade na previsão")
         ca.locator('[data-a="acessos"]').click()
         ok("ana@unidade.test" in pg.inner_text("#da-lista"), "janela de acessos lista a franqueada")
         pg.click("#da-lista [data-senha]")
@@ -302,7 +313,13 @@ def main():
         ok(pg.locator("#b-backup").is_visible() and not pg.locator("#sync").is_visible(), "offline: backup visível, sem indicador de salvamento")
         card(pg, "enxoval-geladeira").locator(".toggle").click()
         pg.fill("#f-unit", "Unidade Teste")
+        qi = card(pg, "enxoval-balde").locator(".qtd input"); qi.fill("3"); qi.press("Enter")
+        ok(card(pg, "enxoval-balde").locator(".pv").inner_text() == "R$ 75", "offline: quantidade digitada recalcula o valor estimado")
         pg.reload()
+        ok(card(pg, "enxoval-balde").locator(".qtd input").input_value() == "3", "offline: quantidade ajustada fica salva no navegador")
+        card(pg, "enxoval-balde").locator('[data-q="reset"]').click()
+        ok(card(pg, "enxoval-balde").locator(".qtd input").input_value() == "1" and card(pg, "enxoval-balde").locator(".pv").inner_text() == "R$ 25",
+           "offline: 'voltar' devolve a quantidade sugerida")
         ok("done" in card(pg, "enxoval-geladeira").get_attribute("class") and pg.input_value("#f-unit") == "Unidade Teste",
            "offline: progresso continua salvo no navegador")
         ok(not ctx.erros, "offline: nenhum erro de JavaScript")

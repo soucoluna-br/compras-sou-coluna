@@ -19,7 +19,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS unidades (id TEXT PRIMARY KEY, nome TEXT NOT NULL, cidade TEXT, responsavel TEXT, inauguracao TEXT, codigo TEXT NOT NULL UNIQUE, criado_em TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS membros (user_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, unidade_id TEXT NOT NULL REFERENCES unidades(id) ON DELETE CASCADE, criado_em TEXT NOT NULL, PRIMARY KEY (user_id, unidade_id))`,
   `CREATE INDEX IF NOT EXISTS membros_unidade ON membros(unidade_id)`,
-  `CREATE TABLE IF NOT EXISTS compras (unidade_id TEXT NOT NULL REFERENCES unidades(id) ON DELETE CASCADE, item_id TEXT NOT NULL, comprado INTEGER NOT NULL DEFAULT 0, valor_centavos INTEGER, atualizado_em TEXT NOT NULL, atualizado_por TEXT, PRIMARY KEY (unidade_id, item_id))`,
+  `CREATE TABLE IF NOT EXISTS compras (unidade_id TEXT NOT NULL REFERENCES unidades(id) ON DELETE CASCADE, item_id TEXT NOT NULL, comprado INTEGER NOT NULL DEFAULT 0, valor_centavos INTEGER, quantidade REAL, atualizado_em TEXT NOT NULL, atualizado_por TEXT, PRIMARY KEY (unidade_id, item_id))`,
   `CREATE TABLE IF NOT EXISTS senhas (user_id TEXT PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE, hash TEXT NOT NULL, atualizado_em TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS sessoes (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, expira_em TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS sessoes_usuario ON sessoes(user_id)`,
@@ -280,10 +280,11 @@ rota("POST", "/redefinir-com-chave", async (c) => {
 rota("GET", "/unidades/:id/compras", async (c) => {
   const u = await exigirSessao(c);
   const un = await exigirUnidade(c, u, c.p.id);
-  const itens = (await c.env.DB.prepare("SELECT item_id, comprado, valor_centavos FROM compras WHERE unidade_id = ?1").bind(un.id).all()).results;
+  const itens = (await c.env.DB.prepare("SELECT item_id, comprado, valor_centavos, quantidade FROM compras WHERE unidade_id = ?1").bind(un.id).all()).results;
   return json({
     unidade: { id: un.id, nome: un.nome, cidade: un.cidade, responsavel: un.responsavel, inauguracao: un.inauguracao },
-    itens: itens.map((r) => ({ item_id: r.item_id, comprado: !!r.comprado, valor_pago: r.valor_centavos == null ? null : r.valor_centavos / 100 })),
+    itens: itens.map((r) => ({ item_id: r.item_id, comprado: !!r.comprado, valor_pago: r.valor_centavos == null ? null : r.valor_centavos / 100,
+      quantidade: r.quantidade })),
   });
 });
 rota("POST", "/unidades/:id/compras", async (c) => {
@@ -293,15 +294,17 @@ rota("POST", "/unidades/:id/compras", async (c) => {
   if (!Array.isArray(linhas) || !linhas.length || linhas.length > 200) throw new Erro(400, "dados");
   const agora = agoraIso();
   const st = c.env.DB.prepare(
-    `INSERT INTO compras (unidade_id, item_id, comprado, valor_centavos, atualizado_em, atualizado_por) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+    `INSERT INTO compras (unidade_id, item_id, comprado, valor_centavos, quantidade, atualizado_em, atualizado_por) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
      ON CONFLICT(unidade_id, item_id) DO UPDATE SET comprado = excluded.comprado, valor_centavos = excluded.valor_centavos,
-       atualizado_em = excluded.atualizado_em, atualizado_por = excluded.atualizado_por`);
+       quantidade = excluded.quantidade, atualizado_em = excluded.atualizado_em, atualizado_por = excluded.atualizado_por`);
   await c.env.DB.batch(linhas.map((l) => {
     const item = String((l && l.item_id) || "");
     if (!/^[a-z0-9-]{1,120}$/.test(item)) throw new Erro(400, "dados");
     const v = l.valor_pago;
     if (v != null && !(typeof v === "number" && isFinite(v) && v >= 0 && v < 1e9)) throw new Erro(400, "dados");
-    return st.bind(un.id, item, l.comprado ? 1 : 0, v == null ? null : Math.round(v * 100), agora, u.id);
+    const q = l.quantidade;   // null = usa a quantidade sugerida no guia
+    if (q != null && !(typeof q === "number" && isFinite(q) && q >= 0 && q <= 100000)) throw new Erro(400, "dados");
+    return st.bind(un.id, item, l.comprado ? 1 : 0, v == null ? null : Math.round(v * 100), q == null ? null : Math.round(q * 100) / 100, agora, u.id);
   }));
   return json({ ok: true });
 });
@@ -317,14 +320,14 @@ rota("GET", "/painel", async (c) => {
   const u = await exigirSessao(c); exigirFranqueadora(u);
   const [un, co, me] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT id, nome, cidade, responsavel, inauguracao, codigo, criado_em FROM unidades ORDER BY nome COLLATE NOCASE"),
-    c.env.DB.prepare("SELECT unidade_id, item_id, comprado, valor_centavos, atualizado_em FROM compras"),
+    c.env.DB.prepare("SELECT unidade_id, item_id, comprado, valor_centavos, quantidade, atualizado_em FROM compras"),
     c.env.DB.prepare(`SELECT m.unidade_id, m.user_id, m.criado_em, u.email, u.nome FROM membros m JOIN usuarios u ON u.id = m.user_id
                       ORDER BY m.criado_em`),
   ]);
   return json({
     unidades: un.results,
     compras: co.results.map((r) => ({ unidade_id: r.unidade_id, item_id: r.item_id, comprado: !!r.comprado,
-      valor_pago: r.valor_centavos == null ? null : r.valor_centavos / 100, atualizado_em: r.atualizado_em })),
+      valor_pago: r.valor_centavos == null ? null : r.valor_centavos / 100, quantidade: r.quantidade, atualizado_em: r.atualizado_em })),
     membros: me.results,
   });
 });
@@ -387,7 +390,13 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   try {
     if (!env.DB) throw new Erro(500, "sem_banco");
-    if (!schemaPronto) { await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))); schemaPronto = true; }
+    if (!schemaPronto) {
+      await env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s)));
+      // migração: quantidade ajustada pela unidade (coluna criada depois da primeira versão do banco)
+      const cols = (await env.DB.prepare("PRAGMA table_info(compras)").all()).results.map((c) => c.name);
+      if (!cols.includes("quantidade")) await env.DB.prepare("ALTER TABLE compras ADD COLUMN quantidade REAL").run();
+      schemaPronto = true;
+    }
 
     const caminho = "/" + [].concat(context.params.rota || []).join("/");
     const metodo = request.method === "HEAD" ? "GET" : request.method;

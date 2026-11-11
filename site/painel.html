@@ -167,19 +167,22 @@ const linkSite = (q) => `${location.origin}/?${q}`;
 let UNIDADES = [];
 
 function calcular(compras) {
-  let done = 0, paid = 0, prevDone = 0, paidCmp = 0, monthly = 0, ult = null;
+  // previsão da unidade: quantidade ajustada por ela (quando houver) × valor de referência
+  let done = 0, paid = 0, prevDone = 0, paidCmp = 0, monthly = 0, ult = null, prev = PREV_TOTAL;
   compras.forEach((c) => {
     const it = BYID[c.item_id];
     if (!it) return;  // item que saiu do catálogo
     if (!ult || c.atualizado_em > ult) ult = c.atualizado_em;
+    const pvItem = it.unit == null ? null : Math.round((c.quantidade != null ? c.quantidade : it.qty) * it.unit * 100) / 100;
+    if (pvItem != null) prev += pvItem - it.prev;
     if (!c.comprado) return;
     done++;
     const v = c.valor_pago;
     if (it.recurring) monthly += v || 0;
-    else { paid += v || 0; if (v != null && it.prev != null) { prevDone += it.prev; paidCmp += v; } }
+    else { paid += v || 0; if (v != null && pvItem != null) { prevDone += pvItem; paidCmp += v; } }
   });
   const n = ITEMS.length;
-  return { n, done, pct: n ? Math.round(done / n * 100) : 0, paid, prev: PREV_TOTAL, prevDone,
+  return { n, done, pct: n ? Math.round(done / n * 100) : 0, paid, prev: Math.round(prev * 100) / 100, prevDone,
            delta: Math.round((paidCmp - prevDone) * 100) / 100, monthly, ult };
 }
 
@@ -199,7 +202,7 @@ function desenhar() {
   $("k-n-sub").textContent = n ? `${n - concl} em abertura · ${concl} ${concl === 1 ? "concluída" : "concluídas"}` : "nenhuma cadastrada";
   $("k-pct").textContent = n ? Math.round(UNIDADES.reduce((a, u) => a + u.st.pct, 0) / n) + "%" : "—";
   $("k-paid").textContent = fmt(UNIDADES.reduce((a, u) => a + u.st.paid, 0), 0);
-  $("k-paid-sub").textContent = n ? `de ${fmt(PREV_TOTAL * n, 0)} previstos no total` : " ";
+  $("k-paid-sub").textContent = n ? `de ${fmt(UNIDADES.reduce((a, u) => a + u.st.prev, 0), 0)} previstos no total` : " ";
   const comDelta = UNIDADES.filter((u) => u.st.prevDone > 0), d = comDelta.reduce((a, u) => a + u.st.delta, 0);
   const kd = $("k-delta");
   if (!comDelta.length) { kd.textContent = "—"; kd.className = "val"; $("k-delta-sub").textContent = "aparece quando houver compras com valor"; }

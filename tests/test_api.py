@@ -61,6 +61,11 @@ def main():
         itens = {i["item_id"]: i for i in r["itens"]}
         ok(itens["enxoval-geladeira"]["valor_pago"] == 2799.9 and itens["enxoval-geladeira"]["comprado"], "valor volta exatamente como gravado (centavos)")
         ok("codigo" not in r["unidade"], "franqueado não recebe o código da unidade pela rota do guia")
+        ok(ana.post(f"unidades/{A}/compras", {"linhas": [{"item_id": "enxoval-geladeira", "comprado": True, "valor_pago": 2799.9, "quantidade": 3}]})[0] == 200,
+           "Ana ajusta a quantidade de um item")
+        itens = {i["item_id"]: i for i in ana.get(f"unidades/{A}/compras")[1]["itens"]}
+        ok(itens["enxoval-geladeira"]["quantidade"] == 3 and itens["enxoval-balde"]["quantidade"] is None, "quantidade ajustada volta do banco (e fica vazia onde não mudou)")
+        ok(ana.post(f"unidades/{A}/compras", {"linhas": [{"item_id": "enxoval-balde", "quantidade": -1}]})[0] == 400, "quantidade negativa é recusada")
         ok(ana.post(f"unidades/{A}/compras", {"linhas": [{"item_id": "x", "valor_pago": -5}]})[0] == 400, "valor negativo é recusado")
         ok(ana.post(f"unidades/{A}/compras", {"linhas": [{"item_id": "../etc", "comprado": True}]})[0] == 400, "id de item inválido é recusado")
         ok(ana.post(f"unidades/{A}/compras", {"linhas": []})[0] == 400, "lote vazio é recusado")

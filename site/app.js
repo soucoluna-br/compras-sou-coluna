@@ -35,7 +35,7 @@
     if (!u) { location.replace(quem.franqueadora ? "/painel" : "/?escolher=1"); return null; }
     const r = await api("unidades/" + encodeURIComponent(u.id) + "/compras");
     const itens = {};
-    r.itens.forEach((x) => { itens[x.item_id] = { done: !!x.comprado, paid: x.valor_pago }; });
+    r.itens.forEach((x) => { itens[x.item_id] = { done: !!x.comprado, paid: x.valor_pago, qty: x.quantidade == null ? null : x.quantidade }; });
     return { unidade: r.unidade, itens, email: quem.email, franqueadora: quem.franqueadora, varias: quem.unidades.length > 1 };
   }
 
