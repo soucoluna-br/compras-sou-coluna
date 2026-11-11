@@ -82,6 +82,12 @@ Na conta da Cloudflare da Sou Coluna (plano gratuito), criados pelo Claude via A
 
 ## Mudar itens, preços ou fotos
 
+**Pelo painel (o jeito normal):** entre como franqueadora → aba **Catálogo** → **Editar** no item. Dá para mudar nome, especificação, etapa, categoria, quantidade sugerida, valor de referência, fornecimento, fornecedor, observação e foto, criar item novo (**+ Novo item**), remover e **Voltar ao original**. Vale na hora para todas as unidades; o que elas já marcaram continua valendo.
+
+Para a versão offline e o PDF também refletirem essas mudanças: `python3 scripts/baixar_catalogo.py`, depois `python3 build.py` e `python3 scripts/gerar_pdf.py` (ou peça ao Claude).
+
+**Pelo código (mudanças grandes na lista base):**
+
 1. Edite `data.py` (itens e valores) ou coloque fotos em `images/` com o nome do id do item (lista em `out/ids-dos-itens.json`).
 2. Rode:
 
