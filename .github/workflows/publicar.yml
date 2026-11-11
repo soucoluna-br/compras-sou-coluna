@@ -30,12 +30,18 @@ jobs:
             echo "::warning::Site não publicado: falta o segredo CLOUDFLARE_API_TOKEN no GitHub (veja o README)."
             echo "PULAR=1" >> "$GITHUB_ENV"; exit 0
           fi
-          # aceita o token com ou sem "Bearer " na frente e sem espaços/quebras de linha sobrando
-          TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '\r\n' | sed -E 's/^[[:space:]]*([Bb]earer[[:space:]]+)?//; s/[[:space:]]+$//')
-          echo "::add-mask::$TOKEN"
+          # Pega só o token do que foi colado: aceita "Bearer <token>", espaços, quebras de linha
+          # e até o comando "curl ..." de teste que a Cloudflare mostra junto do token.
+          RAW=$CLOUDFLARE_API_TOKEN
+          TOKEN=$(printf '%s' "$RAW" | grep -oE '[A-Za-z0-9_-]{30,}' | awk '{print length, $0}' | sort -rn | head -1 | cut -d' ' -f2-)
+          [ -n "$TOKEN" ] && echo "::add-mask::$TOKEN"
           R=$(curl -sS https://api.cloudflare.com/client/v4/accounts -H "Authorization: Bearer $TOKEN")
           ID=$(echo "$R" | jq -r '.result[0].id // empty')
-          if [ -z "$ID" ]; then echo "::error::A Cloudflare recusou o token: $(echo "$R" | jq -r '[.errors[]?.message] | join("; ")')"; exit 1; fi
+          if [ -z "$ID" ]; then
+            echo "::error::A Cloudflare recusou o token: $(echo "$R" | jq -r '[.errors[]?.message] | join("; ")')"
+            echo "Diagnóstico (sem mostrar o token): o segredo salvo tem ${#RAW} caracteres; o trecho com cara de token tem ${#TOKEN}."
+            exit 1
+          fi
           echo "::add-mask::$ID"
           echo "CLOUDFLARE_ACCOUNT_ID=$ID" >> "$GITHUB_ENV"
           echo "CLOUDFLARE_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
