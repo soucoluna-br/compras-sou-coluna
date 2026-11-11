@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--__HEAD_EXTRA__-->
 <style>
 :root{
   --coral:#EF7B60; --coral-d:#D9644A; --coral-t:#FDEEE9; --coral-tt:#FEF7F4;
@@ -37,6 +38,24 @@ button,input{font:inherit;color:inherit}
 .unit-box input{width:100%;background:transparent;border:0;border-bottom:1.5px solid rgba(255,255,255,.55);padding:6px 0;color:#fff;font-size:17px;font-family:var(--head);outline:none}
 .unit-box input::placeholder{color:rgba(255,255,255,.6)}
 .unit-box input:focus{border-bottom-color:#fff}
+.unit-box input[readonly]{border-bottom-color:transparent;cursor:default}
+
+/* ---------- SITE COM LOGIN (só aparece na versão online) ---------- */
+.online-only{display:none}
+html.online .online-only{display:flex}
+html.online .offline-only{display:none!important}
+html.online body:not(.pronto){visibility:hidden}
+.user-nav{align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;font-size:13.5px}
+.user-nav a,.user-nav button{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.55);background:transparent;padding:7px 14px;border-radius:99px;font-weight:500;cursor:pointer;font-size:13px}
+.user-nav a:hover,.user-nav button:hover{background:rgba(255,255,255,.14)}
+.user-nav .who{opacity:.9;margin-right:6px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync{align-items:center;gap:6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.sync::before{content:"";width:8px;height:8px;border-radius:9px;background:var(--ok)}
+.sync.salvando::before{background:#E5B53C}
+.sync.erro{color:var(--coral-d)} .sync.erro::before{background:var(--coral-d)}
+.falha{max-width:520px;margin:18vh auto;padding:28px;background:#fff;border-radius:var(--r);border:1px solid var(--line);text-align:center;visibility:visible}
+.falha h2{font-family:var(--head);margin:0 0 8px}
+.falha a{color:var(--coral-d);font-weight:600}
 
 /* ---------- KPIs ---------- */
 .kpis{margin-top:-84px;position:relative;z-index:2;background:var(--card);border-radius:24px;box-shadow:var(--shadow);display:grid;grid-template-columns:auto 1fr 1fr 1fr;align-items:stretch}
@@ -186,6 +205,7 @@ button,input{font:inherit;color:inherit}
   .overview{grid-template-columns:1fr}
   .search{min-width:0;flex:1}
   .sec-head h2{font-size:26px}
+  .user-nav .who{display:none}
 }
 
 /* ---------- PRINT ---------- */
@@ -315,7 +335,8 @@ button,input{font:inherit;color:inherit}
   <div class="wrap">
     <div class="hero-top">
       <img class="hero-logo" src="__LOGO_WHITE__" alt="Sou Coluna">
-      <span class="hero-tag">Franquia · Abertura de unidade</span>
+      <span class="hero-tag offline-only">Franquia · Abertura de unidade</span>
+      <nav class="user-nav online-only" id="user-nav"></nav>
     </div>
     <div class="hero-main">
       <div>
@@ -353,6 +374,7 @@ button,input{font:inherit;color:inherit}
       <button data-f="done">Comprados</button>
     </div>
     <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" placeholder="Buscar item" type="search"></label>
+    <span class="sync online-only" id="sync" role="status" aria-live="polite">Tudo salvo</span>
   </div>
 </div>
 
@@ -361,7 +383,7 @@ button,input{font:inherit;color:inherit}
 <footer class="foot">
   <div class="wrap">
     <div>
-      <h3>Seu progresso fica salvo neste navegador</h3>
+      <h3 id="foot-h">Seu progresso fica salvo neste navegador</h3>
       <p id="foot-txt">Use sempre o mesmo computador ou celular para continuar de onde parou. Para mandar o andamento para a franqueadora, copie o resumo e cole no WhatsApp.</p>
       <div class="disclaimer">Valores de referência sujeitos a variação de preço, região e fornecedor. Itens de mensalidade não entram no total de investimento.</div>
     </div>
@@ -369,9 +391,9 @@ button,input{font:inherit;color:inherit}
       <button class="btn pri" id="b-copy"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg>Copiar resumo</button>
       <button class="btn standalone" id="b-print"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></svg>Imprimir / PDF</button>
       <button class="btn standalone" id="b-csv">Exportar planilha</button>
-      <button class="btn standalone" id="b-backup">Baixar backup</button>
-      <label class="btn standalone" id="b-restore" style="cursor:pointer">Restaurar backup<input type="file" accept=".json,application/json" hidden id="f-restore"></label>
-      <button class="btn warn" id="b-reset">Zerar progresso</button>
+      <button class="btn standalone offline-only" id="b-backup">Baixar backup</button>
+      <label class="btn standalone offline-only" id="b-restore" style="cursor:pointer">Restaurar backup<input type="file" accept=".json,application/json" hidden id="f-restore"></label>
+      <button class="btn warn offline-only" id="b-reset">Zerar progresso</button>
     </div>
   </div>
 </footer>
@@ -429,11 +451,42 @@ SECTIONS.forEach((s,si)=>{
 const BYID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 
 /* ---------- state ---------- */
+// ONLINE = versão do site com login (site/guia.html): o progresso vai para o banco (Supabase) via window.SC (app.js).
+// Sem window.SC (HTML offline e PDF), o progresso fica no localStorage como sempre.
+const ONLINE=!!window.SC;
 const KEY='soucoluna-guia-compras-v1';
 let state={items:{},unit:'',resp:''};
-try{const raw=localStorage.getItem(KEY); if(raw){const p=JSON.parse(raw); if(p&&p.items) state=Object.assign(state,p);}}catch(e){}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}};
+let CTX=null;
+if(!ONLINE){try{const raw=localStorage.getItem(KEY); if(raw){const p=JSON.parse(raw); if(p&&p.items) state=Object.assign(state,p);}}catch(e){}}
+const save=(...ids)=>{
+  if(ONLINE){ids.forEach(id=>pend.add(id)); if(ids.length) agendarEnvio(); return;}
+  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+};
 const st=id=>state.items[id]||(state.items[id]={done:false,paid:null});
+
+/* ---------- envio para o banco (só online) ---------- */
+const pend=new Set(); let envioT=null, enviando=false;
+function setSync(s){const el=document.getElementById('sync'); if(!el) return; el.className='sync online-only '+s;
+  el.textContent = s==='salvando'?'Salvando…' : s==='erro'?'Sem conexão · tentando de novo' : 'Tudo salvo';}
+function agendarEnvio(ms){setSync('salvando'); clearTimeout(envioT); envioT=setTimeout(enviar, ms==null?450:ms);}
+async function enviar(){
+  if(enviando){agendarEnvio(); return;}
+  if(!pend.size){setSync('ok'); return;}
+  const ids=[...pend]; pend.clear(); enviando=true;
+  try{
+    await SC.salvarCompras(CTX.unidade.id, ids.map(id=>{const s=st(id); return {item_id:id, comprado:!!s.done, valor_pago:s.paid};}));
+    if(!pend.size) setSync('ok');
+  }catch(e){
+    ids.forEach(id=>pend.add(id)); setSync('erro');
+    if(e && e.sessaoExpirada){toast('Sua sessão expirou. Entre de novo para continuar salvando.'); return;}
+    agendarEnvio(6000); setSync('erro');
+  }finally{enviando=false;}
+}
+let respT;
+function salvarResp(){clearTimeout(respT); setSync('salvando');
+  respT=setTimeout(async()=>{try{await SC.definirResponsavel(CTX.unidade.id, state.resp); if(!pend.size&&!enviando) setSync('ok');}
+    catch(e){setSync('erro'); toast('Não foi possível salvar o responsável.');}},700);}
+window.addEventListener('beforeunload',e=>{if(ONLINE&&(pend.size||enviando)){e.preventDefault(); e.returnValue='';}});
 
 /* ---------- money ---------- */
 const fmt=(v,dec)=>{ if(v==null||isNaN(v)) return '—';
@@ -572,7 +625,7 @@ document.addEventListener('click',e=>{
   if(tg){const id=tg.closest('.card').dataset.id, it=BYID[id], s=st(id); s.done=!s.done;
     const inp=cardEl(id).querySelector('input');
     if(s.done && s.paid==null && it.prev!=null){s.paid=it.prev; inp.value=fmtIn(s.paid);}
-    save(); paint(it); stats(); if(filt!=='all') applyFilter(); return;}
+    save(id); paint(it); stats(); if(filt!=='all') applyFilter(); return;}
   const z=e.target.closest('[data-zoom]');
   if(z){openLB(BYID[z.closest('.card').dataset.id]);return;}
   if(e.target.id==='lb'||e.target.closest('.lb-close')){closeLB();}
@@ -581,11 +634,12 @@ document.addEventListener('change',e=>{
   if(e.target.matches('.money input')){const id=e.target.closest('.card').dataset.id,it=BYID[id],s=st(id);
     s.paid=parseMoney(e.target.value); e.target.value=fmtIn(s.paid);
     if(s.paid!=null && s.paid>0) s.done=true;
-    save(); paint(it); stats(); if(filt!=='all') applyFilter();}
+    save(id); paint(it); stats(); if(filt!=='all') applyFilter();}
 });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeLB();
   if(e.key==='Enter' && e.target.matches('.money input')) e.target.blur(); });
-['f-unit','f-resp'].forEach(id=>document.getElementById(id).addEventListener('input',e=>{state[id==='f-unit'?'unit':'resp']=e.target.value;save();syncCover();}));
+['f-unit','f-resp'].forEach(id=>document.getElementById(id).addEventListener('input',e=>{state[id==='f-unit'?'unit':'resp']=e.target.value;syncCover();
+  if(!ONLINE) save(); else if(id==='f-resp') salvarResp();}));
 document.getElementById('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;filt=b.dataset.f;document.querySelectorAll('#seg button').forEach(x=>x.classList.toggle('on',x===b));applyFilter();});
 document.getElementById('q').addEventListener('input',e=>{query=e.target.value;applyFilter();});
 
@@ -642,9 +696,40 @@ document.getElementById('b-reset').addEventListener('click',e=>{const b=e.curren
 /* ---------- active tab on scroll ---------- */
 const obs=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){document.querySelectorAll('#tabs a').forEach(a=>a.classList.toggle('on',a.dataset.sec===en.target.id));}});},{rootMargin:'-40% 0px -55% 0px'});
 
-render();
-SECTIONS.forEach(s=>obs.observe(document.getElementById(s.id)));
-if(new URLSearchParams(location.search).has('blank')){state={items:{},unit:'',resp:''};document.querySelectorAll('.money input').forEach(i=>i.value='');ITEMS.forEach(paint);stats();syncCover();}
+/* ---------- versão online: cabeçalho, rodapé e carga do banco ---------- */
+function prepararOnline(){
+  const u=CTX.unidade;
+  document.title=`${u.nome} · Guia de Compras Sou Coluna`;
+  const fu=document.getElementById('f-unit'); fu.readOnly=true; fu.title='O nome da unidade é definido pela franqueadora';
+  document.getElementById('user-nav').innerHTML=
+    (CTX.franqueadora?'<a href="painel.html">← Painel</a>':'')+
+    (CTX.varias&&!CTX.franqueadora?'<a href="index.html?escolher=1">Trocar unidade</a>':'')+
+    `<span class="who" title="${esc(CTX.email)}">${esc(CTX.email)}</span><button type="button" id="b-sair">Sair</button>`;
+  document.getElementById('b-sair').addEventListener('click',()=>SC.sair());
+  document.getElementById('foot-h').textContent='Seu progresso fica salvo na sua conta';
+  document.getElementById('foot-txt').textContent='Continue de qualquer computador ou celular, é só entrar com seu e-mail. A franqueadora acompanha o andamento da unidade pelo painel.';
+}
+function falha(titulo,txt){
+  document.body.innerHTML=`<div class="falha"><h2>${esc(titulo)}</h2><p>${txt}</p></div>`;
+  document.body.classList.add('pronto');
+}
+async function boot(){
+  if(ONLINE){
+    try{CTX=await SC.abrirGuia();}
+    catch(e){
+      if(e&&e.message==='config') return falha('Site ainda não configurado','Preencha o arquivo <b>config.js</b> com o endereço e a chave do Supabase.');
+      return falha('Não foi possível carregar o guia','Verifique a conexão com a internet e <a href="">tente de novo</a>.');
+    }
+    if(!CTX) return; // sem login ou sem unidade: abrirGuia já redirecionou
+    state={items:CTX.itens,unit:CTX.unidade.nome,resp:CTX.unidade.responsavel||''};
+    prepararOnline();
+  }
+  render();
+  SECTIONS.forEach(s=>obs.observe(document.getElementById(s.id)));
+  if(new URLSearchParams(location.search).has('blank')){state={items:{},unit:'',resp:''};document.querySelectorAll('.money input').forEach(i=>i.value='');ITEMS.forEach(paint);stats();syncCover();}
+  document.body.classList.add('pronto');
+}
+boot();
 </script>
 </body>
 </html>
