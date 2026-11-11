@@ -1,39 +1,22 @@
-"""Testes de ponta a ponta do site (login, guia e painel) e da versão offline.
-
-Roda num Chromium de verdade, com um Supabase de mentira (tests/site/fake-supabase.js),
-então não precisa de conta no Supabase nem de internet.
+"""Testes de ponta a ponta do site num Chromium de verdade, com o servidor da Cloudflare rodando
+localmente (wrangler pages dev + banco D1 local zerado). Também confere a versão offline.
 
 Uso:
   python3 build.py
   python3 tests/test_site.py                    # CHROMIUM_PATH=/caminho/do/chromium se precisar
   python3 tests/test_site.py --telas pasta/     # também salva capturas de tela (celular e computador)
 """
-import functools, http.server, json, os, re, sys, threading
+import os, re, sys
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-ROOT = Path(__file__).resolve().parent.parent
-SITE = ROOT / "site"
-FAKE = (ROOT / "tests/site/fake-supabase.js").read_text(encoding="utf-8")
+sys.path.insert(0, str(Path(__file__).parent))
+from servidor_local import CHAVE, ROOT, Servidor
+
 TELAS = Path(sys.argv[sys.argv.index("--telas") + 1]) if "--telas" in sys.argv else None
-
-ADM = "00000000-0000-4000-8000-0000000000ad"
-UA = "aaaaaaaa-0000-4000-8000-000000000001"
-UB = "bbbbbbbb-0000-4000-8000-000000000002"
-SEED = {
-    "users": [{"id": ADM, "email": "adm@soucoluna.test", "password": "senha-adm-123"}],
-    "perfis": [{"user_id": ADM, "email": "adm@soucoluna.test", "nome": "Franqueadora", "franqueadora": True}],
-    "unidades": [
-        {"id": UA, "nome": "Sou Coluna Florianópolis", "cidade": "Florianópolis", "responsavel": None,
-         "inauguracao": "2027-02-01", "codigo": "AAAAA-11111", "criado_em": "2026-11-01T10:00:00Z"},
-        {"id": UB, "nome": "Sou Coluna Curitiba", "cidade": "Curitiba", "responsavel": "Bruno",
-         "inauguracao": None, "codigo": "BBBBB-22222", "criado_em": "2026-11-02T10:00:00Z"},
-    ],
-    "membros": [], "compras": [], "log": [],
-    "config": {"confirmarEmail": False, "falharEscrita": False},
-}
-
 passou = 0
+
+
 def ok(cond, msg):
     global passou
     if not cond:
@@ -42,52 +25,23 @@ def ok(cond, msg):
     print("ok:", msg)
 
 
-class Quieto(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, *a):
-        pass
-
-
-def servidor():
-    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Quieto, directory=str(SITE)))
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
-    return srv, f"http://127.0.0.1:{srv.server_address[1]}"
-
-
-def novo_contexto(browser, base, configurado=True, seed=SEED, **kw):
+def novo_contexto(browser, **kw):
     ctx = browser.new_context(permissions=["clipboard-read", "clipboard-write"], **kw)
-    ctx.route(re.compile(r".*/vendor/supabase-[\d.]+\.js$"), lambda r: r.fulfill(body=FAKE, content_type="text/javascript"))
-    if configurado:
-        ctx.route(re.compile(r".*/config\.js$"), lambda r: r.fulfill(
-            body='window.SC_CONFIG={url:"https://teste.supabase.co",anonKey:"chave-de-teste"};', content_type="text/javascript"))
-    ctx.add_init_script(f"try{{if(!localStorage.getItem('__fakedb')) localStorage.setItem('__fakedb', {json.dumps(json.dumps(seed))});}}catch(e){{}}")
-    erros = []
-    ctx.on("page", lambda p: vigiar(p, erros))
-    ctx.erros = erros
+    ctx.erros = []
+    def vigiar(page):
+        page.on("pageerror", lambda e: ctx.erros.append(f"{page.url}: {e}"))
+        page.on("response", lambda r: r.status >= 400 and "/api/" not in r.url and "127.0.0.1" in r.url
+                and ctx.erros.append(f"{r.status} {r.url}"))
+    ctx.on("page", vigiar)
     return ctx
 
 
-def vigiar(page, erros):
-    page.on("pageerror", lambda e: erros.append(f"{page.url}: {e}"))
-    page.on("response", lambda r: r.status >= 400 and "127.0.0.1" in r.url and erros.append(f"{r.status} {r.url}"))
+def api(page, caminho):
+    return page.evaluate("async c => (await fetch('/api/' + c)).json()", caminho)
 
 
-def db(page):
-    return page.evaluate("JSON.parse(localStorage.getItem('__fakedb'))")
-
-
-def mexer_db(page, js):
-    page.evaluate("(()=>{const d=JSON.parse(localStorage.getItem('__fakedb'));" + js + ";localStorage.setItem('__fakedb',JSON.stringify(d));})()")
-
-
-def visivel(page, view):
-    return page.locator(f'[data-view="{view}"]').is_visible()
-
-
-def entrar(page, base, email, senha):
-    page.goto(base + "/index.html")
-    page.locator('[data-view="entrar"]').wait_for()
-    page.fill("#e-mail", email); page.fill("#e-senha", senha)
-    page.click("#f-entrar button[type=submit]")
+def pronto(page):
+    page.wait_for_function("document.body.classList.contains('pronto')")
 
 
 def card(page, item):
@@ -95,7 +49,18 @@ def card(page, item):
 
 
 def esperar_salvo(page):
-    page.wait_for_function("document.getElementById('sync').textContent==='Tudo salvo'", timeout=12000)
+    page.wait_for_function("document.getElementById('sync').textContent==='Tudo salvo'", timeout=15000)
+
+
+def ver(page, view):
+    page.locator(f'[data-view="{view}"]').wait_for()
+
+
+def entrar(page, base, email, senha):
+    page.goto(base + "/")
+    ver(page, "entrar")
+    page.fill("#e-mail", email); page.fill("#e-senha", senha)
+    page.click("#f-entrar button[type=submit]")
 
 
 def sem_rolagem_lateral(page):
@@ -105,238 +70,244 @@ def sem_rolagem_lateral(page):
 def tela(page, nome):
     if TELAS:
         TELAS.mkdir(parents=True, exist_ok=True)
-        page.screenshot(path=str(TELAS / f"{nome}.png"), full_page=False)
+        page.screenshot(path=str(TELAS / f"{nome}.png"))
 
 
 def main():
-    srv, base = servidor()
-    with sync_playwright() as p:
+    with Servidor() as srv, sync_playwright() as p:
+        B = srv.base
         exe = os.environ.get("CHROMIUM_PATH")
         browser = p.chromium.launch(**({"executable_path": exe} if exe else {}))
-
-        # ---------- 1. site sem config.js preenchido ----------
-        ctx = novo_contexto(browser, base, configurado=False)
-        pg = ctx.new_page()
-        pg.goto(base + "/index.html")
-        ok(visivel(pg, "config"), "sem config.js: login avisa que o site não está configurado")
-        pg.goto(base + "/guia.html")
-        pg.locator(".falha").wait_for()
-        ok("não configurado" in pg.inner_text(".falha"), "sem config.js: guia avisa em vez de quebrar")
-        ctx.close()
-
-        # ---------- 2. fluxo principal ----------
-        ctx = novo_contexto(browser, base, viewport={"width": 1280, "height": 900})
+        ctx = novo_contexto(browser, viewport={"width": 1366, "height": 900})
         pg = ctx.new_page()
 
-        entrar(pg, base, "adm@soucoluna.test", "errada")
-        pg.locator("#f-entrar .msg").wait_for()
-        ok(pg.inner_text("#f-entrar .msg") == "E-mail ou senha incorretos.", "senha errada mostra mensagem em português")
-
-        entrar(pg, base, "adm@soucoluna.test", "senha-adm-123")
-        pg.wait_for_url("**/painel.html")
-        pg.locator(".row").first.wait_for()
-        ok(pg.locator(".row").count() == 2, "franqueadora cai no painel e vê as 2 unidades")
-        ok(pg.inner_text("#k-n") == "2", "KPI mostra 2 unidades")
-        tela(pg, "painel-computador")
-
-        pg.click("#b-nova")
-        pg.fill("#u-nome", "Sou Coluna Joinville"); pg.fill("#u-cidade", "Joinville"); pg.fill("#u-inaug", "2027-05-10")
+        # ---------- franqueadora cria a conta com a chave e cadastra unidades ----------
+        pg.goto(B + "/")
+        ver(pg, "entrar")
+        tela(pg, "login-computador")
+        pg.click('[data-view="entrar"] [data-ir="criar"]')
+        pg.fill("#c-codigo", CHAVE); pg.fill("#c-nome", "Franqueadora"); pg.fill("#c-mail", "adm@soucoluna.test"); pg.fill("#c-senha", "senha-adm-123")
+        pg.click("#f-criar button[type=submit]")
+        pg.wait_for_url("**/painel")
+        pg.locator(".vazio").wait_for()
+        ok("Nenhuma unidade" in pg.inner_text(".vazio"), "franqueadora entra com a chave e vê o painel vazio")
+        pg.click(".vazio button")
+        pg.fill("#u-nome", "Sou Coluna Florianópolis"); pg.fill("#u-cidade", "Florianópolis"); pg.fill("#u-inaug", "2027-02-01")
         pg.click("#f-unidade button[type=submit]")
         pg.locator("#d-convite[open]").wait_for()
-        cod_j = pg.inner_text("#dc-codigo")
-        ok(re.fullmatch(r"[0-9A-F]{5}-[0-9A-F]{5}", cod_j) is not None, "nova unidade abre o convite com o código")
+        cod_a = pg.inner_text("#dc-codigo")
+        ok(re.fullmatch(r"[0-9A-F]{5}-[0-9A-F]{5}", cod_a) is not None, "nova unidade abre o convite com o código")
         pg.click("#b-copiar-msg")
         msg = pg.evaluate("navigator.clipboard.readText()")
-        ok(cod_j in msg and "/index.html?codigo=" + cod_j in msg, "mensagem de convite copiada com link e código")
+        ok(cod_a in msg and f"{B}/?codigo={cod_a}" in msg, "mensagem de convite copiada com link e código")
         tela(pg, "painel-convite")
         pg.click("#d-convite [data-fechar]")
-        ok(pg.locator(".row").count() == 3, "lista passa a ter 3 unidades")
+        pg.click("#b-nova"); pg.fill("#u-nome", "Sou Coluna Curitiba"); pg.fill("#u-cidade", "Curitiba")
+        pg.click("#f-unidade button[type=submit]")
+        pg.locator("#d-convite[open]").wait_for()
+        cod_b = pg.inner_text("#dc-codigo")
+        pg.click("#d-convite [data-fechar]")
+        ok(pg.locator(".un").count() == 2 and pg.inner_text("#k-n") == "2", "painel mostra as 2 unidades")
+        UA = pg.locator(".un", has_text="Florianópolis").get_attribute("data-id")
+        UB = pg.locator(".un", has_text="Curitiba").get_attribute("data-id")
+        pg.click("[data-sair]"); pg.wait_for_url(B + "/")
 
-        pg.click("[data-sair]")
-        pg.wait_for_url("**/index.html")
-
-        # franqueada entra pelo link de convite (código digitado de qualquer jeito)
-        pg.goto(base + "/index.html?codigo=aaaaa11111")
-        pg.locator('[data-view="criar"]').wait_for()
-        ok(pg.input_value("#c-codigo") == "AAAAA-11111", "link de convite abre 'Criar conta' com o código formatado")
+        # ---------- franqueada entra pelo convite ----------
+        pg.goto(B + "/?codigo=" + cod_a.lower().replace("-", ""))
+        ver(pg, "criar")
+        ok(pg.input_value("#c-codigo") == cod_a, "link de convite abre 'Criar conta' com o código formatado")
         pg.fill("#c-nome", "Ana"); pg.fill("#c-mail", "ana@unidade.test"); pg.fill("#c-senha", "123")
         pg.click("#f-criar button[type=submit]")
         ok("8 caracteres" in pg.inner_text("#f-criar .msg"), "senha curta é recusada")
-        pg.fill("#c-senha", "senha-da-ana")
-        pg.click("#f-criar button[type=submit]")
-        pg.wait_for_url(f"**/guia.html?u={UA}")
-        pg.wait_for_function("document.body.classList.contains('pronto')")
-        ok(pg.input_value("#f-unit") == "Sou Coluna Florianópolis", "guia abre direto na unidade do convite")
-        ok(pg.locator("#f-unit").get_attribute("readonly") is not None, "nome da unidade não é editável pelo franqueado")
+        pg.fill("#c-senha", "senha-da-ana"); pg.click("#f-criar button[type=submit]")
+        pg.wait_for_url(f"**/guia?u={UA}"); pronto(pg)
+        ok(pg.input_value("#f-unit") == "Sou Coluna Florianópolis" and pg.locator("#f-unit").get_attribute("readonly") is not None,
+           "guia abre na unidade do convite, com o nome travado")
         nav = pg.inner_text("#user-nav")
         ok("Sair" in nav and "Painel" not in nav, "franqueado vê 'Sair' e não vê o painel")
-        ok(not pg.locator(".hero-tag").is_visible() and not pg.locator("#b-backup").is_visible(), "botões só da versão offline ficam escondidos")
+        ok(not pg.locator("#b-trocar").is_visible(), "com uma unidade só, não aparece 'Trocar unidade'")
+        ok(not pg.locator(".hero-tag").is_visible() and not pg.locator("#b-backup").is_visible(), "itens só da versão offline ficam escondidos")
         ok(pg.inner_text("#foot-h") == "Seu progresso fica salvo na sua conta", "rodapé explica que salva na conta")
-        tela(pg, "guia-computador")
 
-        prev_geladeira = pg.evaluate("BYID['enxoval-geladeira'].prev")
+        prev = pg.evaluate("BYID['enxoval-geladeira'].prev")
         card(pg, "enxoval-geladeira").locator(".toggle").click()
         esperar_salvo(pg)
-        c = [x for x in db(pg)["compras"] if x["item_id"] == "enxoval-geladeira"]
-        ok(len(c) == 1 and c[0]["comprado"] and c[0]["valor_pago"] == prev_geladeira and c[0]["unidade_id"] == UA,
-           "marcar comprado grava no banco com o valor previsto")
+        itens = {i["item_id"]: i for i in api(pg, f"unidades/{UA}/compras")["itens"]}
+        ok(itens["enxoval-geladeira"]["comprado"] and itens["enxoval-geladeira"]["valor_pago"] == prev, "marcar comprado grava no banco com o valor previsto")
         inp = card(pg, "enxoval-balde").locator(".money input")
         inp.fill("1.234,56"); inp.press("Enter")
         esperar_salvo(pg)
-        c = [x for x in db(pg)["compras"] if x["item_id"] == "enxoval-balde"]
-        ok(c and c[0]["valor_pago"] == 1234.56 and c[0]["comprado"], "valor pago digitado grava no banco e marca como comprado")
+        itens = {i["item_id"]: i for i in api(pg, f"unidades/{UA}/compras")["itens"]}
+        ok(itens["enxoval-balde"]["valor_pago"] == 1234.56 and itens["enxoval-balde"]["comprado"], "valor pago digitado grava no banco e marca como comprado")
         pg.fill("#f-resp", "Ana Souza")
-        pg.wait_for_function(f"JSON.parse(localStorage.getItem('__fakedb')).unidades.find(u=>u.id==='{UA}').responsavel==='Ana Souza'", timeout=5000)
+        pg.wait_for_function(f"fetch('/api/unidades/{UA}/compras').then(r=>r.json()).then(j=>j.unidade.responsavel==='Ana Souza')", timeout=8000, polling=500)
         ok(True, "responsável digitado no guia vai para o banco")
+        pg.evaluate("scrollTo(0,0)")
+        tela(pg, "guia-computador")
 
-        pg.reload(); pg.wait_for_function("document.body.classList.contains('pronto')")
-        ok("done" in card(pg, "enxoval-geladeira").get_attribute("class"), "depois de recarregar, o item continua comprado")
-        ok(card(pg, "enxoval-balde").locator(".money input").input_value() == "1.234,56", "depois de recarregar, o valor pago continua")
-        ok(pg.inner_text("#k-items") == "2 de 130", "andamento recalculado a partir do banco")
-        ok(pg.input_value("#f-resp") == "Ana Souza", "responsável carregado do banco")
+        pg.reload(); pronto(pg)
+        ok("done" in card(pg, "enxoval-geladeira").get_attribute("class") and card(pg, "enxoval-balde").locator(".money input").input_value() == "1.234,56",
+           "depois de recarregar, compras e valores continuam")
+        ok(pg.inner_text("#k-items") == "2 de 130" and pg.input_value("#f-resp") == "Ana Souza", "andamento e responsável vêm do banco")
 
-        pg.goto(base + f"/guia.html?u={UB}")
-        pg.wait_for_url("**/index.html?escolher=1")
-        pg.locator('[data-view="escolher"]').wait_for()
+        # ---------- filtros, ordem e visualização ----------
+        visiveis = lambda: pg.locator("#sections .card:visible").count()
+        pg.click('#abas button[data-f="done"]')
+        ok(visiveis() == 2 and pg.inner_text("#n-encontrados") == "2 itens encontrados", "aba Comprados mostra só os 2 comprados")
+        pg.click('#abas button[data-f="todo"]')
+        ok(visiveis() == 128 and not card(pg, "enxoval-geladeira").is_visible(), "aba Pendentes esconde os comprados")
+        pg.click('#abas button[data-f="all"]')
+        pg.check('#fl-etapa input[value="franqueadora"]')
+        ok(visiveis() == 8, "filtro de etapa mostra só os itens da etapa")
+        pg.check('#fl-supply input[value="homologado"]')
+        n_h = pg.evaluate("ITEMS.filter(i=>i.sec==='franqueadora'&&i.supply==='homologado').length")
+        ok(visiveis() == n_h, "filtros combinados (etapa + fornecimento)")
+        pg.click("#b-limpar")
+        ok(visiveis() == 130, "limpar filtros volta a mostrar tudo")
+        pg.fill("#q", "geladeira")
+        ok(visiveis() == 1, "busca encontra o item")
+        pg.fill("#q", "")
+        pg.select_option("#ordem", "maior")
+        maior = pg.evaluate("[...ITEMS].sort((a,b)=>(b.prev||-1)-(a.prev||-1))[0].id")
+        ok(pg.locator("#sections .card").first.get_attribute("data-id") == maior, "ordenar por maior valor põe o item mais caro primeiro")
+        pg.click('#vis button[data-v="lista"]')
+        ok("modo-lista" in pg.get_attribute("#sections", "class"), "visualização em lista")
+        pg.reload(); pronto(pg)
+        ok(pg.input_value("#ordem") == "maior" and "modo-lista" in pg.get_attribute("#sections", "class"), "ordem e visualização ficam lembradas")
+        pg.select_option("#ordem", "etapa"); pg.click('#vis button[data-v="blocos"]')
+
+        pg.goto(B + f"/guia?u={UB}")
+        pg.wait_for_url("**/?escolher=1"); ver(pg, "escolher")
         ok(pg.locator("#lista a").count() == 1 and "Florianópolis" in pg.inner_text("#lista"), "franqueado não abre o guia de outra unidade")
 
-        # queda de conexão ao salvar
-        pg.goto(base + f"/guia.html?u={UA}"); pg.wait_for_function("document.body.classList.contains('pronto')")
-        mexer_db(pg, "d.config.falharEscrita=true")
+        # ---------- queda de conexão ----------
+        pg.goto(B + f"/guia?u={UA}"); pronto(pg)
+        bloqueio = lambda rota: rota.abort() if rota.request.method == "POST" else rota.continue_()
+        pg.route("**/api/unidades/*/compras", bloqueio)
         card(pg, "enxoval-calculadora").locator(".toggle").click()
-        pg.wait_for_function("document.getElementById('sync').textContent.startsWith('Sem conexão')", timeout=5000)
+        pg.wait_for_function("document.getElementById('sync').textContent.startsWith('Sem conexão')", timeout=6000)
         ok(True, "sem conexão: o guia avisa que não salvou")
-        mexer_db(pg, "d.config.falharEscrita=false")
+        pg.unroute("**/api/unidades/*/compras", bloqueio)
         esperar_salvo(pg)
-        ok(any(x["item_id"] == "enxoval-calculadora" for x in db(pg)["compras"]), "conexão volta: o guia reenvia sozinho")
-        pg.click("#b-sair"); pg.wait_for_url("**/index.html")
+        ok(any(i["item_id"] == "enxoval-calculadora" for i in api(pg, f"unidades/{UA}/compras")["itens"]), "conexão volta: o guia reenvia sozinho")
+        pg.click("#b-sair"); pg.wait_for_url(B + "/")
 
-        # cadastro com código errado / e-mail repetido
-        pg.locator('[data-view="entrar"]').wait_for()
+        # ---------- erros no login e no cadastro ----------
+        ver(pg, "entrar")
         pg.click('[data-view="entrar"] [data-ir="criar"]')
         pg.fill("#c-codigo", "00000-00000"); pg.fill("#c-nome", "X"); pg.fill("#c-mail", "x@x.test"); pg.fill("#c-senha", "12345678")
         pg.click("#f-criar button[type=submit]")
         pg.wait_for_function("document.querySelector('#f-criar .msg').textContent.includes('Código não encontrado')")
-        ok(True, "código inexistente é recusado antes de criar a conta")
-        pg.fill("#c-codigo", "BBBBB-22222"); pg.fill("#c-mail", "ana@unidade.test")
+        ok(True, "código inexistente é recusado")
+        pg.fill("#c-codigo", cod_b); pg.fill("#c-mail", "ana@unidade.test")
         pg.click("#f-criar button[type=submit]")
         pg.wait_for_function("document.querySelector('#f-criar .msg').textContent.includes('já tem conta')")
         ok(True, "e-mail já cadastrado é avisado")
+        entrar(pg, B, "adm@soucoluna.test", "errada")
+        pg.wait_for_function("document.querySelector('#f-entrar .msg').textContent==='E-mail ou senha incorretos.'")
+        ok(True, "senha errada mostra mensagem em português")
 
-        # franqueadora acompanha
-        entrar(pg, base, "adm@soucoluna.test", "senha-adm-123")
-        pg.wait_for_url("**/painel.html"); pg.locator(".row").first.wait_for()
-        row_a = pg.locator(f'.row[data-id="{UA}"]')
-        ok("3 de 130" in row_a.inner_text() and "Ana Souza" in row_a.inner_text(), "painel mostra o andamento e o responsável da unidade")
-        ok("1 acesso" in row_a.inner_text(), "painel mostra quantas pessoas acessam")
-        row_a.locator('[data-a="acessos"]').click()
-        ok("ana@unidade.test" in pg.inner_text("#da-lista"), "janela de acessos lista o e-mail da franqueada")
-        b = pg.locator("#da-lista [data-remover]")
-        b.click(); b.click()
+        # ---------- franqueadora acompanha ----------
+        entrar(pg, B, "adm@soucoluna.test", "senha-adm-123")
+        pg.wait_for_url("**/painel"); pg.locator(".un").first.wait_for()
+        tela(pg, "painel-computador")
+        ca = pg.locator(f'.un[data-id="{UA}"]')
+        ok("3 de 130" in ca.inner_text() and "Ana Souza" in ca.inner_text() and "1 acesso" in ca.inner_text(), "painel mostra andamento, responsável e acessos")
+        ca.locator('[data-a="acessos"]').click()
+        ok("ana@unidade.test" in pg.inner_text("#da-lista"), "janela de acessos lista a franqueada")
+        pg.click("#da-lista [data-senha]")
+        pg.wait_for_function("navigator.clipboard.readText().then(t=>t.includes('?redefinir='))")
+        link_senha = re.search(r"https?://\S+\?redefinir=\S+", pg.evaluate("navigator.clipboard.readText()")).group(0)
+        ok(link_senha.startswith(B + "/?redefinir="), "franqueadora copia um link de senha nova")
+        rem = pg.locator("#da-lista [data-remover]"); rem.click(); rem.click()
         pg.wait_for_function("!document.querySelector('#da-lista [data-remover]')")
-        ok(not [m for m in db(pg)["membros"] if m["unidade_id"] == UA], "franqueadora remove o acesso (com confirmação)")
         pg.click("#d-acessos [data-fechar]")
-        ok("sem acesso ainda" in pg.locator(f'.row[data-id="{UA}"]').inner_text(), "unidade sem acesso fica sinalizada")
-
-        pg.locator(f'.row[data-id="{UB}"] [data-a="convite"]').click()
-        antigo = pg.inner_text("#dc-codigo")
+        ok("Sem acesso ainda" in pg.locator(f'.un[data-id="{UA}"]').inner_text(), "remover acesso (com confirmação) sinaliza a unidade")
+        pg.locator(f'.un[data-id="{UB}"] [data-a="convite"]').click()
         pg.click("#b-renovar"); pg.click("#b-renovar")
-        pg.wait_for_function(f"document.getElementById('dc-codigo').textContent!=='{antigo}'")
+        pg.wait_for_function(f"document.getElementById('dc-codigo').textContent!=='{cod_b}'")
         novo_b = pg.inner_text("#dc-codigo")
-        ok(next(u for u in db(pg)["unidades"] if u["id"] == UB)["codigo"] == novo_b, "gerar novo código troca o código no banco")
+        ok(novo_b != cod_b, "gerar novo código (com confirmação)")
         pg.click("#d-convite [data-fechar]")
-
-        joinville = pg.locator(".row", has_text="Joinville")
-        joinville.locator('[data-a="editar"]').click()
+        pg.click("#b-nova"); pg.fill("#u-nome", "Sou Coluna Joinville"); pg.click("#f-unidade button[type=submit]")
+        pg.locator("#d-convite[open]").wait_for(); pg.click("#d-convite [data-fechar]")
+        pg.locator(".un", has_text="Joinville").locator('[data-a="editar"]').click()
         pg.click("#b-excluir"); pg.click("#b-excluir")
-        pg.wait_for_function("document.querySelectorAll('.row').length===2")
-        ok(True, "excluir unidade (com confirmação) tira da lista")
-
+        pg.wait_for_function("document.querySelectorAll('.un').length===2")
+        ok(True, "excluir unidade (com confirmação)")
         pg.fill("#q", "curit")
-        ok(pg.locator(".row").count() == 1, "busca filtra as unidades")
+        ok(pg.locator(".un").count() == 1, "busca filtra as unidades")
         pg.fill("#q", "")
         with pg.expect_download() as dl:
             pg.click("#b-csv")
         csv = Path(dl.value.path()).read_text(encoding="utf-8-sig").splitlines()
-        ok(len(csv) == 3 and csv[0].startswith('"Unidade";"Cidade"') and "Florianópolis" in "".join(csv), "planilha exporta uma linha por unidade")
+        ok(len(csv) == 3 and csv[0].startswith('"Unidade";"Cidade"'), "planilha exporta uma linha por unidade")
+        pg.locator(f'.un[data-id="{UA}"] a', has_text="Abrir guia").click()
+        pg.wait_for_url(f"**/guia?u={UA}"); pronto(pg)
+        ok("Painel" in pg.inner_text("#user-nav") and pg.locator("#b-trocar").is_visible() and pg.inner_text("#k-items") == "3 de 130",
+           "franqueadora abre o guia da unidade, com atalhos para o painel")
+        pg.click("#b-sair"); pg.wait_for_url(B + "/")
 
-        pg.locator(f'.row[data-id="{UA}"] a', has_text="Abrir guia").click()
-        pg.wait_for_url(f"**/guia.html?u={UA}"); pg.wait_for_function("document.body.classList.contains('pronto')")
-        ok("Painel" in pg.inner_text("#user-nav") and pg.inner_text("#k-items") == "3 de 130", "franqueadora abre o guia da unidade e volta pelo painel")
-        pg.click("#b-sair"); pg.wait_for_url("**/index.html")
+        # ---------- link de senha nova + conta sem unidade ----------
+        pg.goto(link_senha)
+        ver(pg, "nova-senha")
+        ok(pg.inner_text("#ns-email") == "ana@unidade.test", "link de senha mostra de quem é a conta")
+        pg.fill("#n-senha", "senha-nova-ana"); pg.fill("#n-senha2", "outra"); pg.click("#f-senha button[type=submit]")
+        ok("não são iguais" in pg.inner_text("#f-senha .msg"), "confirmação diferente é recusada")
+        pg.fill("#n-senha2", "senha-nova-ana"); pg.click("#f-senha button[type=submit]")
+        ver(pg, "codigo")
+        ok(True, "senha nova salva; conta sem unidade pede o código")
+        pg.fill("#k-codigo", novo_b.lower().replace("-", "")); pg.click("#f-codigo button[type=submit]")
+        pg.wait_for_url(f"**/guia?u={UB}")
+        ok(True, "com o código, a conta entra na outra unidade")
+        pg.click("#b-sair"); pg.wait_for_url(B + "/")
+        pg.goto(link_senha)
+        ver(pg, "esqueci")
+        ok("expirou" in pg.inner_text('[data-view="esqueci"]'), "link de senha usado não vale de novo")
 
-        # esqueci a senha + conta sem unidade + entrar com código
-        pg.locator('[data-view="entrar"]').wait_for()
-        pg.click('[data-ir="esqueci"]'); pg.fill("#r-mail", "ana@unidade.test"); pg.click("#f-esqueci button[type=submit]")
-        pg.locator('[data-view="enviado"]').wait_for()
-        ok(db(pg)["log"][-1]["redirect"].endswith("/index.html?nova-senha=1"), "esqueci a senha envia link que volta para a tela de nova senha")
-        entrar(pg, base, "ana@unidade.test", "senha-da-ana")
-        pg.locator('[data-view="codigo"]').wait_for()
-        ok(True, "conta sem unidade pede o código")
-        pg.goto(base + "/index.html?nova-senha=1")
-        pg.locator('[data-view="nova-senha"]').wait_for()
-        pg.fill("#n-senha", "nova-senha-ana"); pg.fill("#n-senha2", "outra-coisa"); pg.click("#f-senha button[type=submit]")
-        ok("não são iguais" in pg.inner_text("#f-senha .msg"), "nova senha: confirmação diferente é recusada")
-        pg.fill("#n-senha2", "nova-senha-ana"); pg.click("#f-senha button[type=submit]")
-        pg.locator('[data-view="codigo"]').wait_for()
-        ok(next(u for u in db(pg)["users"] if u["email"] == "ana@unidade.test")["password"] == "nova-senha-ana", "nova senha salva")
-        pg.fill("#k-codigo", novo_b.lower().replace("-", ""))
-        pg.click("#f-codigo button[type=submit]")
-        pg.wait_for_url(f"**/guia.html?u={UB}")
-        ok(True, "com o código, a conta entra na unidade e abre o guia")
+        # ---------- franqueadora esqueceu a senha ----------
+        pg.click('[data-view="esqueci"] summary')
+        pg.fill("#k-mail", "adm@soucoluna.test"); pg.fill("#k-chave", CHAVE); pg.fill("#k-senha", "nova-senha-adm")
+        pg.click("#f-chave button[type=submit]")
+        pg.wait_for_url("**/painel")
+        ok(True, "franqueadora troca a senha com a chave e entra")
         ok(not ctx.erros, "nenhum erro de JavaScript ou arquivo faltando: " + "; ".join(ctx.erros))
         ctx.close()
 
-        # ---------- 3. confirmação de e-mail ligada ----------
-        seed = json.loads(json.dumps(SEED)); seed["config"]["confirmarEmail"] = True
-        ctx = novo_contexto(browser, base, seed=seed)
+        # ---------- celular ----------
+        ctx = novo_contexto(browser, viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
         pg = ctx.new_page()
-        pg.goto(base + "/index.html?codigo=AAAAA-11111")
-        pg.locator('[data-view="criar"]').wait_for()
-        pg.fill("#c-nome", "Carla"); pg.fill("#c-mail", "carla@unidade.test"); pg.fill("#c-senha", "senha-carla")
-        pg.click("#f-criar button[type=submit]")
-        pg.locator('[data-view="confirme"]').wait_for()
-        ok("carla@unidade.test" in pg.inner_text("#cf-email"), "com confirmação ligada, pede para abrir o e-mail")
-        entrar(pg, base, "carla@unidade.test", "senha-carla")
-        pg.wait_for_function("document.querySelector('#f-entrar .msg').textContent.includes('Confirme seu e-mail')")
-        ok(True, "entrar antes de confirmar mostra o aviso certo")
-        pg.goto("about:blank")   # o link do e-mail abre a página do zero
-        pg.goto(base + "/index.html#error=access_denied&error_code=otp_expired")
-        ok("expirou" in pg.inner_text("#f-entrar .msg"), "link de e-mail vencido mostra aviso amigável")
-        ctx.close()
-
-        # ---------- 4. celular ----------
-        ctx = novo_contexto(browser, base, viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True)
-        pg = ctx.new_page()
-        pg.goto(base + "/index.html"); pg.locator('[data-view="entrar"]').wait_for()
+        pg.goto(B + "/"); ver(pg, "entrar")
         ok(sem_rolagem_lateral(pg), "celular: login sem rolagem lateral")
         tela(pg, "login-celular")
-        entrar(pg, base, "adm@soucoluna.test", "senha-adm-123")
-        pg.wait_for_url("**/painel.html"); pg.locator(".row").first.wait_for()
+        entrar(pg, B, "adm@soucoluna.test", "nova-senha-adm")
+        pg.wait_for_url("**/painel"); pg.locator(".un").first.wait_for()
         ok(sem_rolagem_lateral(pg), "celular: painel sem rolagem lateral")
         tela(pg, "painel-celular")
-        pg.goto(base + f"/guia.html?u={UA}"); pg.wait_for_function("document.body.classList.contains('pronto')")
+        pg.goto(B + f"/guia?u={UA}"); pronto(pg)
         ok(sem_rolagem_lateral(pg), "celular: guia sem rolagem lateral")
         tela(pg, "guia-celular")
+        pg.click("#b-filtros"); pg.wait_for_timeout(300)
+        ok(pg.locator("#filtros").is_visible() and pg.locator("#veu.on").is_visible(), "celular: filtros abrem numa gaveta")
+        pg.click("#b-fechar-filtros")
         ok(not ctx.erros, "celular: nenhum erro de JavaScript")
         ctx.close()
 
-        # ---------- 5. versão offline continua igual ----------
-        ctx = browser.new_context()
+        # ---------- versão offline ----------
+        ctx = novo_contexto(browser, viewport={"width": 1366, "height": 900})
         pg = ctx.new_page()
-        erros = []; vigiar(pg, erros)
         pg.goto((ROOT / "out/guia-compras-sou-coluna.html").as_uri())
-        ok(pg.locator(".hero-tag").is_visible() and not pg.locator("#user-nav").is_visible(), "offline: cabeçalho original, sem login")
+        ok(pg.locator(".hero-tag").is_visible() and not pg.locator("#user-nav").is_visible() and not pg.locator("#b-trocar").is_visible(),
+           "offline: sem login nem 'Trocar unidade'")
         ok(pg.locator("#b-backup").is_visible() and not pg.locator("#sync").is_visible(), "offline: backup visível, sem indicador de salvamento")
         card(pg, "enxoval-geladeira").locator(".toggle").click()
         pg.fill("#f-unit", "Unidade Teste")
         pg.reload()
         ok("done" in card(pg, "enxoval-geladeira").get_attribute("class") and pg.input_value("#f-unit") == "Unidade Teste",
            "offline: progresso continua salvo no navegador")
-        ok(not erros, "offline: nenhum erro de JavaScript")
+        ok(not ctx.erros, "offline: nenhum erro de JavaScript")
         ctx.close()
         browser.close()
-    srv.shutdown()
     print(f"\nTODOS OS {passou} TESTES DO SITE PASSARAM")
 
 

@@ -84,6 +84,7 @@ for old in site_img.glob("*.jpg"):
 
 template = (ROOT / "template.html").read_text(encoding="utf-8")
 logo_white = data_uri(ROOT / "assets/logo-white.png", 900)
+logo_coral = data_uri(ROOT / "assets/logo-coral.png", 600)
 symbol_white = data_uri(ROOT / "assets/symbol-white.png", 700)
 data_json = json.dumps(sections, ensure_ascii=False)
 
@@ -93,6 +94,7 @@ def page(imgs, head_extra=""):
                     .replace("/*__IMAGES__*/{}", json.dumps(imgs))
                     .replace("<!--__HEAD_EXTRA__-->", head_extra)
                     .replace("__LOGO_WHITE__", logo_white)
+                    .replace("__LOGO_CORAL__", logo_coral)
                     .replace("__SYMBOL_WHITE__", symbol_white))
 
 
@@ -102,14 +104,10 @@ dest.write_text(page(images), encoding="utf-8")
 print(f"ok: {dest} ({dest.stat().st_size/1024:.0f} KB) · itens={len(seen)} · imagens={len(images)}")
 json.dump(sorted(seen), open(OUT / "ids-dos-itens.json", "w"), ensure_ascii=False, indent=1)
 
-# 2) site com login (Vercel + Supabase): mesma página, mas salvando no banco
-SUPABASE_JS = "vendor/supabase-2.118.0.js"
+# 2) site com login (Cloudflare Pages + D1): mesma página, mas salvando no banco
 head_site = ("<script>document.documentElement.classList.add('online')</script>\n"
              '<link rel="icon" href="assets/favicon.png">\n'
-             '<script src="config.js"></script>\n'
-             f'<script src="{SUPABASE_JS}"></script>\n'
              '<script src="app.js"></script>')
-assert (SITE / SUPABASE_JS).exists(), f"falta {SUPABASE_JS}"
 (SITE / "guia.html").write_text(page(site_images, head_site), encoding="utf-8")
 (SITE / "catalogo.js").write_text(
     "// Gerado por build.py a partir de data.py — não editar à mão.\nwindow.SECTIONS = " + data_json + ";\n",

@@ -1,0 +1,8 @@
+{
+  "name": "compras-sou-coluna-ferramentas",
+  "private": true,
+  "description": "Ferramentas de desenvolvimento: wrangler (Cloudflare) para rodar o site localmente, testar e exportar o backup do banco D1.",
+  "devDependencies": {
+    "wrangler": "4.152.0"
+  }
+}

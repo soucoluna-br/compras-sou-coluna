@@ -3,41 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Painel da franqueadora · Guia de Compras Sou Coluna</title>
+<title>Painel · Guia de Compras Sou Coluna</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilo.css">
-<script src="config.js"></script>
-<script src="vendor/supabase-2.118.0.js"></script>
 <script src="app.js"></script>
 <script src="catalogo.js"></script>
 </head>
 <body>
-<header class="top">
+<header class="topo">
   <div class="wrap">
-    <div class="top-bar">
-      <img src="assets/logo-white.png" alt="Sou Coluna">
-      <nav class="nav"><span class="who" id="who"></span><button type="button" data-sair>Sair</button></nav>
-    </div>
-    <h1>Painel das unidades</h1>
-    <p>Andamento das compras de abertura e orçamento de cada unidade em tempo real.</p>
+    <img class="topo-logo" src="assets/logo-coral.png" alt="Sou Coluna">
+    <nav class="abas"><a class="on" href="/painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M10 21v-6h4v6"/></svg>Unidades</a></nav>
+    <span class="esp"></span>
+    <nav class="user-nav"><span class="who" id="who"></span><span class="avatar" id="avatar"></span><button type="button" class="tb-sair" data-sair>Sair</button></nav>
   </div>
 </header>
+<section class="faixa">
+  <img src="assets/logo-white.png" alt="Sou Coluna">
+  <h1>Painel das unidades</h1>
+  <div class="k">Andamento e orçamento de cada abertura</div>
+</section>
 
 <div class="wrap">
-  <section class="kpis">
-    <div class="kpi"><div class="lbl">Unidades</div><div class="val" id="k-n">—</div><div class="sub" id="k-n-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="lbl">Andamento médio</div><div class="val" id="k-pct">—</div><div class="sub">dos itens comprados</div></div>
-    <div class="kpi"><div class="lbl">Já investido</div><div class="val" id="k-paid">—</div><div class="sub" id="k-paid-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="lbl">Comparado à previsão</div><div class="val" id="k-delta">—</div><div class="sub" id="k-delta-sub">nos itens já comprados</div></div>
+  <section class="resumo">
+    <div class="rs"><div class="lbl">Unidades</div><div class="val" id="k-n">—</div><div class="sub" id="k-n-sub">&nbsp;</div></div>
+    <div class="rs"><div class="lbl">Andamento médio</div><div class="val" id="k-pct">—</div><div class="sub">dos itens comprados</div></div>
+    <div class="rs"><div class="lbl">Já investido</div><div class="val" id="k-paid">—</div><div class="sub" id="k-paid-sub">&nbsp;</div></div>
+    <div class="rs"><div class="lbl">Comparado à previsão</div><div class="val" id="k-delta">—</div><div class="sub" id="k-delta-sub">nos itens já comprados</div></div>
   </section>
 
-  <div class="tools">
-    <button class="b pri" id="b-nova" type="button">+ Nova unidade</button>
-    <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Buscar unidade, cidade ou responsável"></label>
-    <span class="spacer"></span>
+  <div class="barra">
+    <div class="tit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M10 21v-6h4v6"/></svg>Unidades <small id="n-encontradas"></small></div>
+    <span class="esp"></span>
+    <label class="busca"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Buscar unidade, cidade ou responsável"></label>
     <select id="ordem" aria-label="Ordenar">
       <option value="nome">Ordem: nome</option>
       <option value="inauguracao">Ordem: inauguração</option>
@@ -46,9 +47,10 @@
     </select>
     <button class="b ghost sm" id="b-atualizar" type="button">Atualizar</button>
     <button class="b ghost sm" id="b-csv" type="button">Exportar planilha</button>
+    <button class="b pri sm" id="b-nova" type="button">+ Nova unidade</button>
   </div>
 
-  <main class="list" id="lista"><div class="spin" aria-label="Carregando"></div></main>
+  <main class="unidades" id="lista"><div class="spin" aria-label="Carregando"></div></main>
 </div>
 
 <!-- nova / editar unidade -->
@@ -92,7 +94,7 @@
 <dialog id="d-acessos">
   <div class="dlg">
     <h3>Acessos · <span id="da-nome"></span></h3>
-    <p class="sub">Pessoas que entram no guia desta unidade. Para incluir alguém, envie o convite.</p>
+    <p class="sub">Quem entra no guia desta unidade. Para incluir alguém, envie o convite. Se alguém esqueceu a senha, gere um link de senha nova.</p>
     <div class="members" id="da-lista"></div>
     <div class="foot"><button class="b ghost" type="button" data-fechar>Fechar</button></div>
   </div>
@@ -103,7 +105,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = SC.esc;
-const BASE = location.origin + location.pathname.replace(/[^/]*$/, "");
+const SIMBOLO = "assets/symbol-white.png";
 
 /* ---------- catálogo (mesma conta do guia) ---------- */
 const ITEMS = [];
@@ -139,7 +141,7 @@ function quandoTxt(ts) {
   return d.toLocaleDateString("pt-BR");
 }
 let toastT;
-function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("on"), 2600); }
+function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("on"), 2800); }
 async function copiar(txt, ok) {
   try { await navigator.clipboard.writeText(txt); toast(ok); }
   catch (e) {
@@ -148,7 +150,7 @@ async function copiar(txt, ok) {
     ta.remove();
   }
 }
-// botão que pede um segundo clique para confirmar (mesmo padrão do guia)
+// botão que pede um segundo clique para confirmar
 function armar(btn, textoConfirma, acao) {
   if (!btn.classList.contains("arm")) {
     btn.dataset.orig = btn.dataset.orig || btn.textContent;
@@ -159,9 +161,10 @@ function armar(btn, textoConfirma, acao) {
   desarmar(btn); acao();
 }
 function desarmar(btn) { clearTimeout(btn._t); btn.classList.remove("arm"); if (btn.dataset.orig) btn.textContent = btn.dataset.orig; }
+const linkSite = (q) => `${location.origin}/?${q}`;
 
 /* ---------- dados ---------- */
-let UNIDADES = [];   // [{...unidade, st:{...}, membros:[...]}]
+let UNIDADES = [];
 
 function calcular(compras) {
   let done = 0, paid = 0, prevDone = 0, paidCmp = 0, monthly = 0, ult = null;
@@ -171,7 +174,7 @@ function calcular(compras) {
     if (!ult || c.atualizado_em > ult) ult = c.atualizado_em;
     if (!c.comprado) return;
     done++;
-    const v = c.valor_pago == null ? null : Number(c.valor_pago);
+    const v = c.valor_pago;
     if (it.recurring) monthly += v || 0;
     else { paid += v || 0; if (v != null && it.prev != null) { prevDone += it.prev; paidCmp += v; } }
   });
@@ -181,27 +184,21 @@ function calcular(compras) {
 }
 
 async function carregar() {
-  const [us, cs, ms] = await Promise.all([
-    SC.unidades(),
-    SC.todos(() => SC.cliente().from("compras").select("unidade_id,item_id,comprado,valor_pago,atualizado_em").order("unidade_id").order("item_id")),
-    SC.todos(() => SC.cliente().from("membros").select("unidade_id,user_id,criado_em,perfis(email,nome)").order("criado_em").order("user_id")),
-  ]);
+  const r = await SC.api("painel");
   const porUnidade = {}, membros = {};
-  cs.forEach((c) => (porUnidade[c.unidade_id] = porUnidade[c.unidade_id] || []).push(c));
-  ms.forEach((m) => (membros[m.unidade_id] = membros[m.unidade_id] || []).push(m));
-  UNIDADES = us.map((u) => ({ ...u, st: calcular(porUnidade[u.id] || []), membros: membros[u.id] || [] }));
+  r.compras.forEach((c) => (porUnidade[c.unidade_id] = porUnidade[c.unidade_id] || []).push(c));
+  r.membros.forEach((m) => (membros[m.unidade_id] = membros[m.unidade_id] || []).push(m));
+  UNIDADES = r.unidades.map((u) => ({ ...u, st: calcular(porUnidade[u.id] || []), membros: membros[u.id] || [] }));
   desenhar();
 }
 
 /* ---------- tela ---------- */
 function desenhar() {
-  // KPIs
   const n = UNIDADES.length, concl = UNIDADES.filter((u) => u.st.pct === 100).length;
   $("k-n").textContent = n;
   $("k-n-sub").textContent = n ? `${n - concl} em abertura · ${concl} ${concl === 1 ? "concluída" : "concluídas"}` : "nenhuma cadastrada";
   $("k-pct").textContent = n ? Math.round(UNIDADES.reduce((a, u) => a + u.st.pct, 0) / n) + "%" : "—";
-  const pago = UNIDADES.reduce((a, u) => a + u.st.paid, 0);
-  $("k-paid").textContent = fmt(pago, 0);
+  $("k-paid").textContent = fmt(UNIDADES.reduce((a, u) => a + u.st.paid, 0), 0);
   $("k-paid-sub").textContent = n ? `de ${fmt(PREV_TOTAL * n, 0)} previstos no total` : " ";
   const comDelta = UNIDADES.filter((u) => u.st.prevDone > 0), d = comDelta.reduce((a, u) => a + u.st.delta, 0);
   const kd = $("k-delta");
@@ -209,40 +206,41 @@ function desenhar() {
   else if (d <= 0) { kd.textContent = (d === 0 ? "" : "−") + fmt(Math.abs(d), 0); kd.className = "val delta-ok"; $("k-delta-sub").textContent = d === 0 ? "exatamente na previsão" : "de economia somando as unidades"; }
   else { kd.textContent = "+" + fmt(d, 0); kd.className = "val delta-bad"; $("k-delta-sub").textContent = "acima da previsão somando as unidades"; }
 
-  // lista
   const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const q = norm($("q").value.trim());
-  let lista = UNIDADES.filter((u) => !q || norm(`${u.nome} ${u.cidade} ${u.responsavel}`).includes(q));
+  const lista = UNIDADES.filter((u) => !q || norm(`${u.nome} ${u.cidade} ${u.responsavel}`).includes(q));
   const ord = $("ordem").value;
   lista.sort((a, b) =>
     ord === "andamento" ? b.st.pct - a.st.pct || a.nome.localeCompare(b.nome, "pt-BR") :
     ord === "inauguracao" ? (a.inauguracao || "9999").localeCompare(b.inauguracao || "9999") :
     ord === "atualizado" ? (b.st.ult || "").localeCompare(a.st.ult || "") :
     a.nome.localeCompare(b.nome, "pt-BR"));
+  $("n-encontradas").textContent = `${lista.length} ${lista.length === 1 ? "encontrada" : "encontradas"}`;
 
   const el = $("lista");
-  if (!UNIDADES.length) {
+  if (!n) {
     el.innerHTML = `<div class="vazio"><h3>Nenhuma unidade cadastrada ainda</h3><p>Cadastre a unidade, copie o convite e envie ao franqueado. Ele cria a conta com o código e começa a marcar as compras.</p><button class="b pri" type="button" onclick="abrirUnidade()">Cadastrar a primeira unidade</button></div>`;
     return;
   }
   if (!lista.length) { el.innerHTML = `<div class="vazio">Nenhuma unidade encontrada para “${esc($("q").value)}”.</div>`; return; }
   el.innerHTML = lista.map((u) => {
     const s = u.st, ok = s.pct === 100;
+    const tag = !u.membros.length ? `<span class="tag warn">Sem acesso ainda</span>` : ok ? `<span class="tag ok">Concluída</span>` : `<span class="tag">Em abertura</span>`;
     const dlt = s.prevDone > 0 && s.delta !== 0
-      ? `<br><span class="${s.delta < 0 ? "delta-ok" : "delta-bad"}">${fmt(Math.abs(s.delta), 0)} ${s.delta < 0 ? "abaixo" : "acima"} da previsão</span>` : "";
-    const acessos = u.membros.length
-      ? `${u.membros.length} ${u.membros.length === 1 ? "acesso" : "acessos"}`
-      : `<span class="pill warn">sem acesso ainda</span>`;
-    return `<article class="row${ok ? " done" : ""}" data-id="${esc(u.id)}">
-      <div><h3>${esc(u.nome)}</h3>
-        <div class="meta">${esc(u.cidade || "Cidade não informada")} · Resp.: ${esc(u.responsavel || "—")}</div>
-        <div class="meta">${esc(inauguracaoTxt(u.inauguracao))}</div></div>
-      <div><div class="lbl">Andamento</div><div class="num">${s.pct}% <span class="small">· ${s.done} de ${s.n} itens</span></div>
-        <div class="bar${ok ? " ok" : ""}"><i style="width:${s.pct}%"></i></div></div>
-      <div><div class="lbl">Investido</div><div class="num">${fmt(s.paid, 0)}</div><div class="small">de ${fmt(s.prev, 0)} previstos${dlt}</div></div>
-      <div><div class="lbl">Atualizado</div><div class="num" style="font-size:14px">${esc(quandoTxt(s.ult))}</div><div class="small">${acessos}</div></div>
-      <div class="acts">
-        <a class="b sm pri" href="guia.html?u=${encodeURIComponent(u.id)}">Abrir guia</a>
+      ? `<span class="${s.delta < 0 ? "delta-ok" : "delta-bad"}">${fmt(Math.abs(s.delta), 0)} ${s.delta < 0 ? "abaixo" : "acima"} da previsão</span>` : "de " + fmt(s.prev, 0) + " previstos";
+    return `<article class="un${ok ? " done" : ""}" data-id="${esc(u.id)}">
+      <div class="un-top"><div class="un-ico" style="background:var(--coral)"><img src="${SIMBOLO}" alt=""></div>
+        <div style="flex:1;min-width:0"><h3>${esc(u.nome)}</h3><div class="meta">${esc(u.cidade || "Cidade não informada")} · Resp.: ${esc(u.responsavel || "—")}</div></div>${tag}</div>
+      <div class="un-mid">
+        <div><div class="un-prog"><b>${s.pct}%</b><span>${s.done} de ${s.n} itens comprados</span></div><div class="bar${ok ? " ok" : ""}"><i style="width:${s.pct}%"></i></div></div>
+        <div class="un-num">
+          <div><div class="lbl">Investido</div><div class="v">${fmt(s.paid, 0)}</div><div class="s">${dlt}</div></div>
+          <div><div class="lbl">Atualizado</div><div class="v">${esc(quandoTxt(s.ult))}</div><div class="s">${u.membros.length} ${u.membros.length === 1 ? "acesso" : "acessos"}</div></div>
+        </div>
+        <div class="meta">${esc(inauguracaoTxt(u.inauguracao))}</div>
+      </div>
+      <div class="un-acts">
+        <a class="b sm pri" href="/guia?u=${encodeURIComponent(u.id)}">Abrir guia</a>
         <button class="b sm ghost" type="button" data-a="convite">Convite</button>
         <button class="b sm ghost" type="button" data-a="acessos">Acessos</button>
         <button class="b sm ghost" type="button" data-a="editar">Editar</button>
@@ -266,16 +264,15 @@ function abrirUnidade(u) {
 $("f-unidade").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const f = ev.currentTarget, msg = f.querySelector(".msg"), btn = f.querySelector("button[type=submit]");
-  const dados = { nome: $("u-nome").value.trim(), cidade: $("u-cidade").value.trim() || null,
-                  responsavel: $("u-resp").value.trim() || null, inauguracao: $("u-inaug").value || null };
+  const dados = { nome: $("u-nome").value.trim(), cidade: $("u-cidade").value.trim(), responsavel: $("u-resp").value.trim(), inauguracao: $("u-inaug").value || null };
   if (!dados.nome) { msg.className = "msg erro"; msg.textContent = "Informe o nome da unidade."; msg.hidden = false; return; }
   btn.disabled = true;
   try {
     if (editando) {
-      SC.checar(await SC.cliente().from("unidades").update(dados).eq("id", editando.id));
+      await SC.api("unidades/" + encodeURIComponent(editando.id), dados);
       $("d-unidade").close(); toast("Unidade atualizada."); await carregar();
     } else {
-      const nova = SC.checar(await SC.cliente().from("unidades").insert(dados).select().single());
+      const nova = await SC.api("unidades", dados);
       $("d-unidade").close(); await carregar();
       abrirConvite(UNIDADES.find((u) => u.id === nova.id) || nova);
     }
@@ -284,14 +281,14 @@ $("f-unidade").addEventListener("submit", async (ev) => {
 });
 $("b-excluir").addEventListener("click", (ev) => armar(ev.currentTarget, "Clique de novo: apaga a unidade e o progresso", async () => {
   try {
-    SC.checar(await SC.cliente().from("unidades").delete().eq("id", editando.id));
+    await SC.api("unidades/" + encodeURIComponent(editando.id) + "/excluir", {});
     $("d-unidade").close(); toast("Unidade excluída."); await carregar();
   } catch (e) { toast(SC.mensagemErro(e)); }
 }));
 
 /* ---------- convite ---------- */
 let convidando = null;
-const linkConvite = (u) => `${BASE}index.html?codigo=${encodeURIComponent(u.codigo)}`;
+const linkConvite = (u) => linkSite("codigo=" + encodeURIComponent(u.codigo));
 function abrirConvite(u) {
   convidando = u;
   $("dc-nome").textContent = u.nome; $("dc-codigo").textContent = u.codigo; $("dc-link").textContent = linkConvite(u);
@@ -306,8 +303,8 @@ $("b-copiar-msg").addEventListener("click", () => copiar(
   "Mensagem copiada. É só colar no WhatsApp ou e-mail."));
 $("b-renovar").addEventListener("click", (ev) => armar(ev.currentTarget, "Clique de novo: o código atual deixa de valer", async () => {
   try {
-    const novo = SC.checar(await SC.cliente().rpc("renovar_codigo", { unidade: convidando.id }));
-    convidando.codigo = novo; abrirConvite(convidando); toast("Novo código gerado. Quem já tem conta continua com acesso.");
+    const r = await SC.api("unidades/" + encodeURIComponent(convidando.id) + "/renovar-codigo", {});
+    convidando.codigo = r.codigo; abrirConvite(convidando); toast("Novo código gerado. Quem já tem conta continua entrando.");
     carregar().catch(() => {});
   } catch (e) { toast(SC.mensagemErro(e)); }
 }));
@@ -318,17 +315,26 @@ function abrirAcessos(u) {
   vendoAcessos = u;
   $("da-nome").textContent = u.nome;
   $("da-lista").innerHTML = u.membros.length ? u.membros.map((m) => `<div class="member">
-      <div><b>${esc((m.perfis && m.perfis.nome) || (m.perfis && m.perfis.email) || "Sem nome")}</b>
-      <small>${esc((m.perfis && m.perfis.email) || "")} · desde ${new Date(m.criado_em).toLocaleDateString("pt-BR")}</small></div>
-      <button class="b danger sm" type="button" data-remover="${esc(m.user_id)}">Remover</button></div>`).join("")
+      <div><b>${esc(m.nome || m.email)}</b><small>${esc(m.email)} · desde ${new Date(m.criado_em).toLocaleDateString("pt-BR")}</small></div>
+      <div class="bts"><button class="b ghost sm" type="button" data-senha="${esc(m.user_id)}" data-nome="${esc(m.nome || m.email)}">Link de senha</button>
+      <button class="b danger sm" type="button" data-remover="${esc(m.user_id)}">Remover</button></div></div>`).join("")
     : `<div class="vazio" style="padding:22px">Ninguém entrou ainda. Envie o convite ao franqueado.</div>`;
   if (!$("d-acessos").open) $("d-acessos").showModal();
 }
-$("da-lista").addEventListener("click", (ev) => {
+$("da-lista").addEventListener("click", async (ev) => {
+  const s = ev.target.closest("[data-senha]");
+  if (s) {
+    try {
+      const r = await SC.api("usuarios/" + encodeURIComponent(s.dataset.senha) + "/link-senha", {});
+      await copiar(`Olá, ${s.dataset.nome}! Para criar uma senha nova no Guia de Compras Sou Coluna, abra este link (vale por 7 dias):\n${linkSite("redefinir=" + encodeURIComponent(r.token))}`,
+        "Link de senha nova copiado. Mande pelo WhatsApp.");
+    } catch (e) { toast(SC.mensagemErro(e)); }
+    return;
+  }
   const b = ev.target.closest("[data-remover]"); if (!b) return;
   armar(b, "Confirmar remoção", async () => {
     try {
-      SC.checar(await SC.cliente().from("membros").delete().eq("unidade_id", vendoAcessos.id).eq("user_id", b.dataset.remover));
+      await SC.api(`unidades/${encodeURIComponent(vendoAcessos.id)}/membros/${encodeURIComponent(b.dataset.remover)}/remover`, {});
       toast("Acesso removido."); await carregar();
       abrirAcessos(UNIDADES.find((u) => u.id === vendoAcessos.id));
     } catch (e) { toast(SC.mensagemErro(e)); }
@@ -345,7 +351,7 @@ $("b-csv").addEventListener("click", () => {
     const s = u.st;
     linhas.push([u.nome, u.cidade, u.responsavel, u.inauguracao ? dataLocal(u.inauguracao).toLocaleDateString("pt-BR") : "",
       s.done, s.n, s.pct, num(s.prev), num(s.paid), s.prevDone ? num(s.delta) : "", s.monthly ? num(s.monthly) : "",
-      s.ult ? new Date(s.ult).toLocaleString("pt-BR") : "", u.membros.map((m) => m.perfis && m.perfis.email).filter(Boolean).join(", ")]);
+      s.ult ? new Date(s.ult).toLocaleString("pt-BR") : "", u.membros.map((m) => m.email).join(", ")]);
   });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob(["﻿" + linhas.map((r) => r.map(q).join(";")).join("\n")], { type: "text/csv;charset=utf-8" }));
@@ -358,13 +364,13 @@ $("b-nova").addEventListener("click", () => abrirUnidade());
 $("q").addEventListener("input", desenhar);
 $("ordem").addEventListener("change", desenhar);
 $("b-atualizar").addEventListener("click", async (ev) => {
-  ev.currentTarget.disabled = true;
+  const b = ev.currentTarget; b.disabled = true;
   try { await carregar(); toast("Atualizado."); } catch (e) { toast(SC.mensagemErro(e)); }
-  finally { ev.currentTarget.disabled = false; }
+  finally { b.disabled = false; }
 });
 $("lista").addEventListener("click", (ev) => {
   const b = ev.target.closest("[data-a]"); if (!b) return;
-  const u = UNIDADES.find((x) => x.id === b.closest(".row").dataset.id); if (!u) return;
+  const u = UNIDADES.find((x) => x.id === b.closest(".un").dataset.id); if (!u) return;
   if (b.dataset.a === "convite") abrirConvite(u);
   else if (b.dataset.a === "acessos") abrirAcessos(u);
   else if (b.dataset.a === "editar") abrirUnidade(u);
@@ -376,13 +382,11 @@ document.addEventListener("click", (ev) => {
 });
 
 (async function iniciar() {
-  if (!SC.configurado) { $("lista").innerHTML = `<div class="vazio"><h3>Site ainda não configurado</h3><p>Preencha o arquivo config.js com os dados do Supabase.</p></div>`; return; }
   try {
-    const s = await SC.sessao();
-    if (!s) { location.replace("index.html"); return; }
-    const p = await SC.perfil(s.user.id);
-    if (!p || !p.franqueadora) { location.replace("index.html"); return; }
-    $("who").textContent = s.user.email;
+    const eu = await SC.eu();
+    if (!eu) { location.replace("/"); return; }
+    if (!eu.franqueadora) { location.replace("/"); return; }
+    $("who").textContent = eu.email; $("avatar").textContent = (eu.email || "?").charAt(0).toUpperCase();
     await carregar();
   } catch (e) {
     $("lista").innerHTML = `<div class="vazio"><h3>Não foi possível carregar o painel</h3><p>${esc(SC.mensagemErro(e))} <a href="">Tentar de novo</a></p></div>`;

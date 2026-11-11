@@ -1,0 +1,9 @@
+# Só para os testes: permite consultar/exportar o banco D1 local criado pelo "wrangler pages dev"
+# (tests/servidor_local.py usa --d1 DB=banco-local). Não é usado na Cloudflare.
+name = "compras-sou-coluna-teste"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "banco-local"
+database_id = "banco-local"

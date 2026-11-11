@@ -9,262 +9,210 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="estilo.css">
-<script src="config.js"></script>
-<script src="vendor/supabase-2.118.0.js"></script>
 <script src="app.js"></script>
 </head>
 <body>
-<div class="auth">
-  <aside class="auth-side">
-    <img src="assets/logo-white.png" alt="Sou Coluna">
-    <div class="t">
-      <div class="k">Franquia · Abertura de unidade</div>
-      <h1>Guia de Compras<br>da Nova Unidade</h1>
-      <p>Acompanhe as compras de abertura da sua unidade Sou Coluna, do projeto ao estoque inicial.</p>
-      <ul>
-        <li>Lista completa com quantidade, padrão e previsão de cada item</li>
-        <li>Marque o que já comprou e anote o valor pago</li>
-        <li>Seu progresso fica salvo na conta, no computador ou no celular</li>
-        <li>A franqueadora acompanha o andamento junto com você</li>
-      </ul>
+<header class="topo">
+  <div class="wrap"><img class="topo-logo" src="assets/logo-coral.png" alt="Sou Coluna"></div>
+</header>
+<section class="faixa">
+  <img src="assets/logo-white.png" alt="Sou Coluna">
+  <div class="k">Guia de compras · Abertura de unidade</div>
+</section>
+
+<main class="auth-card">
+  <section data-view="carregando"><div class="spin" aria-label="Carregando"></div></section>
+
+  <section data-view="entrar" hidden>
+    <h2>Entrar</h2>
+    <p class="sub">Use o e-mail e a senha que você cadastrou.</p>
+    <form id="f-entrar" novalidate>
+      <div class="msg" hidden></div>
+      <div class="field"><label for="e-mail">E-mail</label><input id="e-mail" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="e-senha">Senha</label><input id="e-senha" type="password" autocomplete="current-password" required></div>
+      <button class="b pri" type="submit">Entrar</button>
+    </form>
+    <div class="alt">
+      <span>Primeiro acesso? <button class="link" data-ir="criar">Criar conta</button></span>
+      <button class="link" data-ir="esqueci">Esqueci a senha</button>
     </div>
-  </aside>
+  </section>
 
-  <main class="auth-main">
-    <div class="auth-card">
+  <section data-view="criar" hidden>
+    <h2>Criar conta</h2>
+    <p class="sub">Você precisa do código da unidade, enviado pela franqueadora.</p>
+    <form id="f-criar" novalidate>
+      <div class="msg" hidden></div>
+      <div class="field"><label for="c-codigo">Código da unidade</label><input id="c-codigo" autocomplete="off" placeholder="Ex.: 7F3A9-C0D41" required></div>
+      <div class="field"><label for="c-nome">Seu nome</label><input id="c-nome" autocomplete="name" required></div>
+      <div class="field"><label for="c-mail">E-mail</label><input id="c-mail" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="c-senha">Senha</label><input id="c-senha" type="password" autocomplete="new-password" minlength="8" required><small>Pelo menos 8 caracteres.</small></div>
+      <button class="b pri" type="submit">Criar conta</button>
+    </form>
+    <div class="alt"><span>Já tem conta? <button class="link" data-ir="entrar">Entrar</button></span></div>
+  </section>
 
-      <section data-view="carregando"><div class="spin" aria-label="Carregando"></div></section>
+  <section data-view="esqueci" hidden>
+    <h2>Esqueci a senha</h2>
+    <p class="dica">Peça à franqueadora um <b>link de senha nova</b>. Ela gera o link no painel e manda para você pelo WhatsApp. O link vale por 7 dias.</p>
+    <details>
+      <summary class="link" style="list-style:none">Sou da franqueadora</summary>
+      <p class="sub" style="margin-top:12px">Use a chave da franqueadora para criar uma senha nova.</p>
+      <form id="f-chave" novalidate>
+        <div class="msg" hidden></div>
+        <div class="field"><label for="k-mail">Seu e-mail</label><input id="k-mail" type="email" autocomplete="email" required></div>
+        <div class="field"><label for="k-chave">Chave da franqueadora</label><input id="k-chave" type="password" autocomplete="off" required></div>
+        <div class="field"><label for="k-senha">Nova senha</label><input id="k-senha" type="password" autocomplete="new-password" required><small>Pelo menos 8 caracteres.</small></div>
+        <button class="b pri" type="submit">Salvar e entrar</button>
+      </form>
+    </details>
+    <div class="alt"><button class="link" data-ir="entrar">Voltar para Entrar</button></div>
+  </section>
 
-      <section data-view="entrar" hidden>
-        <h2>Entrar</h2>
-        <p class="sub">Use o e-mail e a senha que você cadastrou.</p>
-        <form id="f-entrar" novalidate>
-          <div class="msg" hidden></div>
-          <div class="field"><label for="e-mail">E-mail</label><input id="e-mail" type="email" autocomplete="email" required></div>
-          <div class="field"><label for="e-senha">Senha</label><input id="e-senha" type="password" autocomplete="current-password" required></div>
-          <button class="b pri" type="submit">Entrar</button>
-        </form>
-        <div class="alt">
-          <span>Primeiro acesso? <button class="link" data-ir="criar">Criar conta</button></span>
-          <button class="link" data-ir="esqueci">Esqueci a senha</button>
-        </div>
-      </section>
+  <section data-view="nova-senha" hidden>
+    <h2>Nova senha</h2>
+    <p class="sub">Conta: <b id="ns-email"></b></p>
+    <form id="f-senha" novalidate>
+      <div class="msg" hidden></div>
+      <div class="field"><label for="n-senha">Nova senha</label><input id="n-senha" type="password" autocomplete="new-password" required><small>Pelo menos 8 caracteres.</small></div>
+      <div class="field"><label for="n-senha2">Repita a senha</label><input id="n-senha2" type="password" autocomplete="new-password" required></div>
+      <button class="b pri" type="submit">Salvar e entrar</button>
+    </form>
+  </section>
 
-      <section data-view="criar" hidden>
-        <h2>Criar conta</h2>
-        <p class="sub">Você precisa do código da unidade, enviado pela franqueadora.</p>
-        <form id="f-criar" novalidate>
-          <div class="msg" hidden></div>
-          <div class="field"><label for="c-codigo">Código da unidade</label><input id="c-codigo" autocomplete="off" placeholder="Ex.: 7F3A9-C0D41" required></div>
-          <div class="field"><label for="c-nome">Seu nome</label><input id="c-nome" autocomplete="name" required></div>
-          <div class="field"><label for="c-mail">E-mail</label><input id="c-mail" type="email" autocomplete="email" required></div>
-          <div class="field"><label for="c-senha">Senha</label><input id="c-senha" type="password" autocomplete="new-password" minlength="8" required><small>Pelo menos 8 caracteres.</small></div>
-          <button class="b pri" type="submit">Criar conta</button>
-        </form>
-        <div class="alt"><span>Já tem conta? <button class="link" data-ir="entrar">Entrar</button></span></div>
-      </section>
+  <section data-view="codigo" hidden>
+    <h2>Código da unidade</h2>
+    <p class="sub">Sua conta (<b id="c-email"></b>) ainda não está ligada a nenhuma unidade. Digite o código enviado pela franqueadora.</p>
+    <form id="f-codigo" novalidate>
+      <div class="msg" hidden></div>
+      <div class="field"><label for="k-codigo">Código da unidade</label><input id="k-codigo" autocomplete="off" placeholder="Ex.: 7F3A9-C0D41" required></div>
+      <button class="b pri" type="submit">Continuar</button>
+    </form>
+    <div class="alt"><button class="link" data-sair>Sair</button></div>
+  </section>
 
-      <section data-view="confirme" hidden>
-        <h2>Confirme seu e-mail</h2>
-        <p class="sub">Enviamos um link de confirmação para <b id="cf-email"></b>. Abra o e-mail, clique no link e você já entra no guia.</p>
-        <p class="sub">Não chegou? Confira a caixa de spam ou promoções.</p>
-        <div class="alt"><button class="link" data-ir="entrar">Voltar para Entrar</button></div>
-      </section>
-
-      <section data-view="esqueci" hidden>
-        <h2>Esqueci a senha</h2>
-        <p class="sub">Informe seu e-mail e enviaremos um link para criar uma senha nova.</p>
-        <form id="f-esqueci" novalidate>
-          <div class="msg" hidden></div>
-          <div class="field"><label for="r-mail">E-mail</label><input id="r-mail" type="email" autocomplete="email" required></div>
-          <button class="b pri" type="submit">Enviar link</button>
-        </form>
-        <div class="alt"><button class="link" data-ir="entrar">Voltar para Entrar</button></div>
-      </section>
-
-      <section data-view="enviado" hidden>
-        <h2>Confira seu e-mail</h2>
-        <p class="sub">Se houver uma conta com <b id="en-email"></b>, você vai receber um link para criar uma senha nova.</p>
-        <div class="alt"><button class="link" data-ir="entrar">Voltar para Entrar</button></div>
-      </section>
-
-      <section data-view="nova-senha" hidden>
-        <h2>Nova senha</h2>
-        <p class="sub">Escolha uma senha nova para a sua conta.</p>
-        <form id="f-senha" novalidate>
-          <div class="msg" hidden></div>
-          <div class="field"><label for="n-senha">Nova senha</label><input id="n-senha" type="password" autocomplete="new-password" minlength="8" required><small>Pelo menos 8 caracteres.</small></div>
-          <div class="field"><label for="n-senha2">Repita a senha</label><input id="n-senha2" type="password" autocomplete="new-password" required></div>
-          <button class="b pri" type="submit">Salvar senha</button>
-        </form>
-      </section>
-
-      <section data-view="codigo" hidden>
-        <h2>Código da unidade</h2>
-        <p class="sub">Sua conta (<b id="c-email"></b>) ainda não está ligada a nenhuma unidade. Digite o código enviado pela franqueadora.</p>
-        <form id="f-codigo" novalidate>
-          <div class="msg" hidden></div>
-          <div class="field"><label for="k-codigo">Código da unidade</label><input id="k-codigo" autocomplete="off" placeholder="Ex.: 7F3A9-C0D41" required></div>
-          <button class="b pri" type="submit">Continuar</button>
-        </form>
-        <div class="alt"><button class="link" data-sair>Sair</button></div>
-      </section>
-
-      <section data-view="escolher" hidden>
-        <h2>Escolha a unidade</h2>
-        <p class="sub">Conta: <b id="e-email"></b></p>
-        <div class="unit-list" id="lista"></div>
-        <div class="alt">
-          <button class="link" data-ir="codigo">Entrar em outra unidade com código</button>
-          <span><a id="lk-painel" href="painel.html" hidden>Painel da franqueadora</a> <button class="link" data-sair>Sair</button></span>
-        </div>
-      </section>
-
-      <section data-view="config" hidden>
-        <h2>Site ainda não configurado</h2>
-        <p class="sub">Preencha o arquivo <b>config.js</b> com o endereço e a chave pública (anon key) do projeto no Supabase. O passo a passo está no README do projeto.</p>
-      </section>
-
+  <section data-view="escolher" hidden>
+    <h2>Escolha a unidade</h2>
+    <p class="sub">Conta: <b id="e-email"></b></p>
+    <div class="unit-list" id="lista"></div>
+    <div class="alt">
+      <button class="link" data-ir="codigo">Entrar em outra unidade com código</button>
+      <span><a id="lk-painel" href="/painel" hidden>Painel</a> <button class="link" data-sair>Sair</button></span>
     </div>
-  </main>
-</div>
+  </section>
+
+  <section data-view="falha" hidden>
+    <h2>Não foi possível abrir</h2>
+    <p class="sub" id="falha-txt"></p>
+    <button class="b pri" type="button" onclick="location.reload()">Tentar de novo</button>
+  </section>
+</main>
+
+<section class="vantagens" id="vantagens">
+  <div><b>Lista completa</b>Cada item com quantidade, padrão de fornecimento e previsão de valor.</div>
+  <div><b>Salvo na sua conta</b>Marque o que comprou e anote o valor pago, no computador ou no celular.</div>
+  <div><b>Junto com a franqueadora</b>A franqueadora acompanha o andamento da abertura com você.</div>
+</section>
 <div class="toast" id="toast"></div>
 
 <script>
 const P = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
-const BASE = location.origin + location.pathname.replace(/[^/]*$/, "");   // pasta do site
-const LINK_ENTRAR = BASE + "index.html";
 
 function mostrar(v) {
   document.querySelectorAll("[data-view]").forEach((el) => { el.hidden = el.dataset.view !== v; });
   document.querySelectorAll(`[data-view="${v}"] .msg`).forEach((m) => { m.hidden = true; });
-  const f = document.querySelector(`[data-view="${v}"] input:not([type=hidden])`);
-  if (f && !f.value) f.focus();
+  $("vantagens").hidden = !["entrar", "criar"].includes(v);
+  const f = document.querySelector(`[data-view="${v}"] input`);
+  if (f && !f.value && matchMedia("(min-width: 700px)").matches) f.focus();
 }
-function aviso(form, texto, tipo) {
+function aviso(form, texto) {
   const m = form.querySelector(".msg");
-  m.className = "msg " + (tipo || "erro");
-  m.textContent = texto;
-  m.hidden = false;
+  m.className = "msg erro"; m.textContent = texto; m.hidden = false;
 }
 function ocupado(form, sim) { form.querySelector("button[type=submit]").disabled = sim; }
 let toastT;
 function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("on"), 2600); }
 const emailOk = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
-// aceita "7f3a9c0d41", "7F3A9 C0D41" etc. e devolve "7F3A9-C0D41"
-function normCodigo(s) {
+function normCodigo(s) {   // "7f3a9c0d41" → "7F3A9-C0D41" (só para mostrar; o servidor aceita de qualquer jeito)
   const c = String(s || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
-  return c.length === 10 ? c.slice(0, 5) + "-" + c.slice(5) : c;
+  return c.length === 10 ? c.slice(0, 5) + "-" + c.slice(5) : String(s || "");
 }
 const limparUrl = () => history.replaceState(null, "", location.pathname);
 
-// Depois do login: franqueadora → painel; franqueado com 1 unidade → guia; várias → escolher; nenhuma → código.
+// Depois do login: franqueadora → painel; 1 unidade → guia; várias → escolher; nenhuma → código.
 async function seguir() {
   mostrar("carregando");
   try {
-    const s = await SC.sessao();
-    if (!s) { mostrar(P.get("codigo") ? "criar" : "entrar"); return; }
-    $("c-email").textContent = s.user.email;
+    let eu = await SC.eu();
+    if (!eu) { mostrar(P.get("codigo") ? "criar" : "entrar"); return; }
     const convite = P.get("codigo");
     if (convite) {   // já logado e abriu um link de convite: entra na unidade
-      try { SC.checar(await SC.cliente().rpc("entrar_com_codigo", { codigo: normCodigo(convite) })); } catch (e) { /* código vencido: segue */ }
+      try { await SC.api("entrar-com-codigo", { codigo: convite }); eu = await SC.eu(); } catch (e) { /* código vencido: segue */ }
       P.delete("codigo"); limparUrl();
     }
-    const p = await SC.perfil(s.user.id);
+    $("c-email").textContent = eu.email;
     const escolher = P.has("escolher");
-    if (p && p.franqueadora && !escolher) { location.replace("painel.html"); return; }
-    const us = await SC.unidades();
+    if (eu.franqueadora && !escolher) { location.replace("/painel"); return; }
+    const us = eu.unidades;
     if (!us.length) { mostrar("codigo"); return; }
-    if (us.length === 1 && !escolher) { location.replace("guia.html?u=" + encodeURIComponent(us[0].id)); return; }
-    $("e-email").textContent = s.user.email;
-    $("lk-painel").hidden = !(p && p.franqueadora);
-    $("lista").innerHTML = us.map((u) => `<a href="guia.html?u=${encodeURIComponent(u.id)}">${SC.esc(u.nome)}<small>${SC.esc(u.cidade || "")}</small></a>`).join("");
+    if (us.length === 1 && !escolher) { location.replace("/guia?u=" + encodeURIComponent(us[0].id)); return; }
+    $("e-email").textContent = eu.email;
+    $("lk-painel").hidden = !eu.franqueadora;
+    $("lista").innerHTML = us.map((u) => `<a href="/guia?u=${encodeURIComponent(u.id)}">${SC.esc(u.nome)}<small>${SC.esc(u.cidade || "")}</small></a>`).join("");
     mostrar("escolher");
   } catch (e) {
-    mostrar("entrar");
-    aviso($("f-entrar"), SC.mensagemErro(e));
+    $("falha-txt").textContent = SC.mensagemErro(e);
+    mostrar("falha");
   }
 }
 
-$("f-entrar").addEventListener("submit", async (ev) => {
-  ev.preventDefault(); const f = ev.currentTarget;
-  const email = $("e-mail").value.trim(), password = $("e-senha").value;
-  if (!emailOk(email) || !password) return aviso(f, "Informe e-mail e senha.");
-  ocupado(f, true);
-  try {
-    const { error } = await SC.cliente().auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    await seguir();
-  } catch (e) { aviso(f, SC.mensagemErro(e)); }
-  finally { ocupado(f, false); }
+// formulários: cada um chama a API e, dando certo, segue para o lugar certo
+function enviar(id, fn) {
+  $(id).addEventListener("submit", async (ev) => {
+    ev.preventDefault(); const f = ev.currentTarget;
+    ocupado(f, true);
+    try { await fn(f); } catch (e) { aviso(f, SC.mensagemErro(e)); } finally { ocupado(f, false); }
+  });
+}
+enviar("f-entrar", async (f) => {
+  const email = $("e-mail").value.trim(), senha = $("e-senha").value;
+  if (!emailOk(email) || !senha) return aviso(f, "Informe e-mail e senha.");
+  await SC.api("entrar", { email, senha });
+  await seguir();
 });
-
-$("f-criar").addEventListener("submit", async (ev) => {
-  ev.preventDefault(); const f = ev.currentTarget;
-  const codigo = normCodigo($("c-codigo").value), nome = $("c-nome").value.trim();
-  const email = $("c-mail").value.trim(), password = $("c-senha").value;
+enviar("f-criar", async (f) => {
+  const codigo = $("c-codigo").value.trim(), nome = $("c-nome").value.trim(), email = $("c-mail").value.trim(), senha = $("c-senha").value;
   if (!codigo) return aviso(f, "Informe o código da unidade.");
   if (!nome) return aviso(f, "Informe seu nome.");
   if (!emailOk(email)) return aviso(f, "Informe um e-mail válido.");
-  if (password.length < 8) return aviso(f, "A senha precisa ter pelo menos 8 caracteres.");
-  ocupado(f, true);
-  try {
-    const valido = SC.checar(await SC.cliente().rpc("codigo_valido", { codigo }));
-    if (!valido) return aviso(f, "Código não encontrado. Confira com a franqueadora.");
-    const { data, error } = await SC.cliente().auth.signUp({
-      email, password, options: { data: { nome, codigo }, emailRedirectTo: LINK_ENTRAR },
-    });
-    if (error) throw error;
-    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0)
-      return aviso(f, "Este e-mail já tem conta. Use “Entrar”.");
-    if (data.session) { P.delete("codigo"); limparUrl(); await seguir(); return; }
-    $("cf-email").textContent = email;
-    mostrar("confirme");
-  } catch (e) { aviso(f, SC.mensagemErro(e)); }
-  finally { ocupado(f, false); }
+  if (senha.length < 8) return aviso(f, "A senha precisa ter pelo menos 8 caracteres.");
+  await SC.api("cadastrar", { codigo, nome, email, senha });
+  P.delete("codigo"); limparUrl();
+  await seguir();
 });
-
-$("f-esqueci").addEventListener("submit", async (ev) => {
-  ev.preventDefault(); const f = ev.currentTarget;
-  const email = $("r-mail").value.trim();
-  if (!emailOk(email)) return aviso(f, "Informe um e-mail válido.");
-  ocupado(f, true);
-  try {
-    const { error } = await SC.cliente().auth.resetPasswordForEmail(email, { redirectTo: LINK_ENTRAR + "?nova-senha=1" });
-    if (error) throw error;
-    $("en-email").textContent = email;
-    mostrar("enviado");
-  } catch (e) { aviso(f, SC.mensagemErro(e)); }
-  finally { ocupado(f, false); }
+enviar("f-chave", async (f) => {
+  const email = $("k-mail").value.trim(), chave = $("k-chave").value, senha = $("k-senha").value;
+  if (!emailOk(email) || !chave) return aviso(f, "Informe o e-mail e a chave da franqueadora.");
+  if (senha.length < 8) return aviso(f, "A senha precisa ter pelo menos 8 caracteres.");
+  await SC.api("redefinir-com-chave", { email, chave, senha });
+  toast("Senha atualizada.");
+  await seguir();
 });
-
-$("f-senha").addEventListener("submit", async (ev) => {
-  ev.preventDefault(); const f = ev.currentTarget;
+enviar("f-senha", async (f) => {
   const a = $("n-senha").value, b = $("n-senha2").value;
   if (a.length < 8) return aviso(f, "A senha precisa ter pelo menos 8 caracteres.");
   if (a !== b) return aviso(f, "As duas senhas não são iguais.");
-  ocupado(f, true);
-  try {
-    const { error } = await SC.cliente().auth.updateUser({ password: a });
-    if (error) throw error;
-    toast("Senha atualizada.");
-    P.delete("nova-senha"); limparUrl();
-    await seguir();
-  } catch (e) { aviso(f, SC.mensagemErro(e)); }
-  finally { ocupado(f, false); }
+  await SC.api("redefinir", { token: P.get("redefinir"), senha: a });
+  toast("Senha atualizada.");
+  P.delete("redefinir"); limparUrl();
+  await seguir();
 });
-
-$("f-codigo").addEventListener("submit", async (ev) => {
-  ev.preventDefault(); const f = ev.currentTarget;
-  const codigo = normCodigo($("k-codigo").value);
+enviar("f-codigo", async (f) => {
+  const codigo = $("k-codigo").value.trim();
   if (!codigo) return aviso(f, "Informe o código da unidade.");
-  ocupado(f, true);
-  try {
-    SC.checar(await SC.cliente().rpc("entrar_com_codigo", { codigo }));
-    await seguir();
-  } catch (e) { aviso(f, SC.mensagemErro(e)); }
-  finally { ocupado(f, false); }
+  await SC.api("entrar-com-codigo", { codigo });
+  await seguir();
 });
 
 document.addEventListener("click", (ev) => {
@@ -274,23 +222,18 @@ document.addEventListener("click", (ev) => {
 });
 
 (async function iniciar() {
-  if (!SC.configurado) { mostrar("config"); return; }
   if (P.get("codigo")) { $("c-codigo").value = normCodigo(P.get("codigo")); $("k-codigo").value = $("c-codigo").value; }
-  SC.cliente().auth.onAuthStateChange((evento) => { if (evento === "PASSWORD_RECOVERY") mostrar("nova-senha"); });
-  // link de e-mail vencido (confirmação ou senha) volta com #error_code=...
-  const h = new URLSearchParams(location.hash.slice(1));
-  if (h.get("error_code") || h.get("error")) {
-    limparUrl(); mostrar("entrar");
-    aviso($("f-entrar"), h.get("error_code") === "otp_expired"
-      ? "Esse link expirou ou já foi usado. Entre com sua senha ou peça um novo em “Esqueci a senha”."
-      : "Não foi possível usar esse link. Tente entrar com sua senha.");
-    return;
-  }
-  if (P.has("nova-senha")) {
-    const s = await SC.sessao().catch(() => null);
-    if (s) { mostrar("nova-senha"); return; }
-    mostrar("esqueci");
-    aviso($("f-esqueci"), "O link expirou ou já foi usado. Peça um novo abaixo.");
+  if (P.get("redefinir")) {   // link de senha nova gerado pela franqueadora
+    try {
+      const r = await SC.api("redefinir?token=" + encodeURIComponent(P.get("redefinir")));
+      $("ns-email").textContent = r.email;
+      mostrar("nova-senha");
+    } catch (e) {
+      limparUrl(); mostrar("esqueci");
+      $("f-chave").closest("details").open = false;
+      const d = document.querySelector('[data-view="esqueci"] .dica');
+      d.innerHTML = "<b>Este link de senha expirou ou já foi usado.</b> Peça um novo à franqueadora.";
+    }
     return;
   }
   seguir();

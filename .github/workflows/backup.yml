@@ -1,0 +1,46 @@
+# Backup semanal do banco do site (Cloudflare D1) para este repositório.
+# Guarda contas, unidades, acessos e compras em backups/banco.sql. Senhas, sessões e links de senha
+# ficam de fora de propósito. Restaurar: veja o README ("Backup e restauração").
+#
+# Precisa de dois segredos no GitHub (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN   token da Cloudflare com permissão "D1: Edit"
+#   CLOUDFLARE_ACCOUNT_ID  ID da conta da Cloudflare
+name: Backup do banco
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # toda segunda-feira, 03:17 no horário de Brasília
+  workflow_dispatch: {}    # botão "Run workflow" para fazer um backup na hora
+
+permissions:
+  contents: write
+
+concurrency: backup-do-banco
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar o wrangler
+        run: npm ci --prefix ferramentas
+      - name: Exportar o banco (sem senhas)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: ferramentas
+        run: |
+          npx wrangler d1 export compras-sou-coluna --remote -y --output ../backups/banco.sql \
+            --table usuarios --table unidades --table membros --table compras
+      - name: Guardar no repositório
+        run: |
+          git config user.name "backup-automatico"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backups/banco.sql
+          if git diff --cached --quiet; then echo "Nada mudou desde o último backup."; exit 0; fi
+          # [CI Skip] evita que a Cloudflare publique o site de novo só por causa do backup
+          git commit -m "Backup do banco $(date -u +%Y-%m-%d) [CI Skip]"
+          git push

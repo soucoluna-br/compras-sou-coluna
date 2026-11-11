@@ -1,0 +1,2 @@
+Aqui fica o backup semanal do banco do site (backups/banco.sql), gravado pela automação
+.github/workflows/backup.yml. Não edite à mão. Como restaurar: README, seção "Backup e restauração".
