@@ -3,7 +3,7 @@
 Precisa do wrangler instalado em ferramentas/:  cd ferramentas && npm ci
 GUIA_TMP=pasta (opcional) define onde ficam os dados temporários do teste.
 """
-import json, os, shutil, signal, socket, subprocess, tempfile, time, urllib.request
+import json, os, shutil, signal, socket, subprocess, sys, tempfile, time, urllib.request
 from http.cookiejar import CookieJar
 from pathlib import Path
 
@@ -26,11 +26,20 @@ class Servidor:
         self.porta = porta_livre()
         self.base = f"http://127.0.0.1:{self.porta}"
         self.log = open(Path(self.dados) / "wrangler.log", "w")
+        # GUIA_SERVIR=worker testa o arquivo único _worker.js que vai para a Cloudflare (scripts/publicar.sh);
+        # o padrão serve site/ + functions/ direto
+        if os.environ.get("GUIA_SERVIR") == "worker":
+            cwd = Path(self.dados) / "worker"
+            subprocess.run([sys.executable, str(ROOT / "scripts/montar_worker.py"), str(cwd / "publicacao")],
+                           check=True, capture_output=True)
+            pasta = "publicacao"
+        else:
+            cwd, pasta = ROOT, "site"
         self.proc = subprocess.Popen(
-            [str(WRANGLER), "pages", "dev", "site", "--ip", "127.0.0.1", "--port", str(self.porta),
+            [str(WRANGLER), "pages", "dev", pasta, "--ip", "127.0.0.1", "--port", str(self.porta),
              "--d1", "DB=banco-local", "--binding", f"CODIGO_FRANQUEADORA={CHAVE}",
              "--compatibility-date", "2026-10-01", "--persist-to", self.dados],
-            cwd=ROOT, stdout=self.log, stderr=subprocess.STDOUT, start_new_session=True)
+            cwd=cwd, stdout=self.log, stderr=subprocess.STDOUT, start_new_session=True)
         for _ in range(120):
             try:
                 urllib.request.build_opener(urllib.request.ProxyHandler({})).open(self.base + "/", timeout=2)

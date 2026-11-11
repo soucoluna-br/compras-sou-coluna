@@ -18,7 +18,9 @@ Na conta da Cloudflare da Sou Coluna (plano gratuito), criados pelo Claude via A
 
 - **Banco D1** `compras-sou-coluna`. As tabelas são criadas sozinhas no primeiro acesso.
 - **Projeto Pages** `compras-sou-coluna`, no endereço `https://compras-sou-coluna.pages.dev`, com o banco ligado como `DB` e o segredo `CODIGO_FRANQUEADORA` (a **chave da franqueadora**).
-- **Publicação automática:** a cada mudança no GitHub, a automação `.github/workflows/publicar.yml` publica o site. Ela usa o segredo `CLOUDFLARE_API_TOKEN` do GitHub. Para cadastrar ou trocar esse segredo, use [este link direto](https://github.com/soucoluna-br/compras-sou-coluna/settings/secrets/actions/new): nome `CLOUDFLARE_API_TOKEN`, valor = o token. Para publicar na hora, abra **Actions → Publicar o site → Run workflow**.
+- **Endereço:** https://compras.soucoluna.com
+- **Publicar uma versão nova:** rode `python3 build.py` e depois `scripts/publicar.sh` (é assim que o Claude publica). O site inteiro vai num único arquivo de servidor (`_worker.js`, gerado por `scripts/montar_worker.py`).
+- **Publicação automática pelo GitHub (opcional):** a automação `.github/workflows/publicar.yml` roda o mesmo script a cada mudança, se o segredo `CLOUDFLARE_API_TOKEN` do GitHub tiver um token válido. Para trocar o segredo, abra [Settings → Secrets → Actions](https://github.com/soucoluna-br/compras-sou-coluna/settings/secrets/actions), clique no lápis ao lado de `CLOUDFLARE_API_TOKEN` e cole o token **com o botão Copy da Cloudflare** (copiar de print ou digitar troca letras). Sem token válido, a automação só avisa e não publica.
 
 **Token da Cloudflare** (Profile → API Tokens → Create Token → Custom token), com as permissões:
 - Account · Cloudflare Pages · Edit
@@ -28,13 +30,13 @@ Na conta da Cloudflare da Sou Coluna (plano gratuito), criados pelo Claude via A
 
 **Conta da franqueadora:** no site, clique em **Criar conta** e, no campo **Código da unidade**, digite a chave da franqueadora. Cada pessoa da franqueadora cria a própria conta assim.
 
-**Trocar a chave da franqueadora:** na Cloudflare, **Workers & Pages → compras-sou-coluna → Settings → Variables and Secrets → CODIGO_FRANQUEADORA**. Depois, republique em **Actions → Publicar o site → Run workflow**.
+**Trocar a chave da franqueadora:** na Cloudflare, **Workers & Pages → compras-sou-coluna → Settings → Variables and Secrets → CODIGO_FRANQUEADORA**. Depois, publique de novo (`scripts/publicar.sh`).
 
 **Endereço próprio:** no projeto do Pages, **Custom domains → Set up a custom domain → `compras.soucoluna.com`**. Como o domínio já está nessa conta, a Cloudflare cria o apontamento sozinha.
 
 **Backup semanal:** `.github/workflows/backup.yml` usa o mesmo segredo `CLOUDFLARE_API_TOKEN`. Ele só grava quando o repositório é **privado**, porque o backup tem os e-mails dos franqueados e os valores das compras. Enquanto o repositório estiver público, a automação avisa e não grava nada. Para deixar privado: no GitHub, **Settings** → role até **Danger Zone** → **Change visibility → Change to private**.
 
-**Montar do zero em outra conta** (se um dia precisar): crie o banco D1 `compras-sou-coluna`; crie um projeto Pages `compras-sou-coluna` (em **Workers & Pages → Create → Pages**, por upload direto ou ligado ao GitHub com a pasta de saída `site`); em **Settings**, ligue o banco como `DB` e crie o segredo `CODIGO_FRANQUEADORA` (mínimo de 12 caracteres); cadastre o token no GitHub e rode **Publicar o site**.
+**Montar do zero em outra conta** (se um dia precisar): crie o banco D1 `compras-sou-coluna`; crie um projeto Pages `compras-sou-coluna` (em **Workers & Pages → Create → Pages**, por upload direto ou ligado ao GitHub com a pasta de saída `site`); em **Settings**, ligue o banco como `DB` e crie o segredo `CODIGO_FRANQUEADORA` (mínimo de 12 caracteres); rode `scripts/publicar.sh` com `CLOUDFLARE_API_TOKEN` apontando para o token da nova conta.
 
 ---
 
@@ -73,7 +75,7 @@ Na conta da Cloudflare da Sou Coluna (plano gratuito), criados pelo Claude via A
      npx wrangler d1 execute NOME-DO-BANCO-NOVO --remote --file ../backups/banco.sql
      ```
 
-  2. Ligue o banco novo ao projeto (**Settings → Bindings → DB**) e republique em **Actions → Publicar o site → Run workflow**.
+  2. Ligue o banco novo ao projeto (**Settings → Bindings → DB**) e publique de novo (`scripts/publicar.sh`).
   3. As senhas não ficam no backup: a franqueadora cria uma senha nova com a chave, e cada franqueado recebe um link de senha nova pelo painel.
 
 ---
@@ -89,7 +91,7 @@ Na conta da Cloudflare da Sou Coluna (plano gratuito), criados pelo Claude via A
    python3 scripts/gerar_pdf.py  # gera o PDF
    ```
 
-3. Faça o commit e o push. O GitHub publica o site novo sozinho (automação **Publicar o site**).
+3. Faça o commit e publique com `scripts/publicar.sh` (ou peça ao Claude).
 
 > **Atenção ao renomear um item:** o id do item vem do nome. Se uma unidade já marcou esse item no site, renomear faz o progresso dele sumir. Antes de publicar, na pasta `ferramentas/`:
 > `npx wrangler d1 execute compras-sou-coluna --remote --command "UPDATE compras SET item_id = 'id-novo' WHERE item_id = 'id-antigo'"`

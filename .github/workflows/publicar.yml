@@ -1,4 +1,5 @@
-# Publica o site na Cloudflare Pages (projeto "compras-sou-coluna") a cada mudança na branch main.
+# Publica o site na Cloudflare Pages (projeto "compras-sou-coluna") a cada mudança na branch main,
+# com o mesmo scripts/publicar.sh usado nas sessões do Claude (site inteiro num _worker.js).
 # Precisa de um segredo no GitHub (Settings → Secrets and variables → Actions):
 #   CLOUDFLARE_API_TOKEN   token da Cloudflare com "Cloudflare Pages: Edit" e "D1: Edit"
 # O ID da conta é descoberto pelo próprio token. O banco (binding DB) e a chave da franqueadora
@@ -42,7 +43,7 @@ jobs:
           R=$(curl -sS https://api.cloudflare.com/client/v4/accounts -H "Authorization: Bearer $TOKEN")
           ID=$(echo "$R" | jq -r '.result[0].id // empty')
           if [ -z "$ID" ]; then
-            echo "::error::A Cloudflare recusou o token: $(echo "$R" | jq -r '[.errors[]?.message] | join("; ")')"
+            echo "::warning::Site não publicado pelo GitHub: a Cloudflare recusou o token ($(echo "$R" | jq -r '[.errors[]?.message] | join("; ")')). Publique por scripts/publicar.sh numa sessão do Claude ou corrija o segredo CLOUDFLARE_API_TOKEN."
             # diagnóstico sem mostrar o token: só a contagem de cada tipo de caractere
             RAW="$CLOUDFLARE_API_TOKEN" python3 -c '
           import os, unicodedata
@@ -54,7 +55,7 @@ jobs:
                 c(lambda x: x in "\"\x27"), "aspas |", c(lambda x: not x.isascii()), "fora do ASCII",
                 [unicodedata.name(x, "?") for x in r if not x.isascii()][:5],
                 "| começa com Bearer:", r.strip().lower().startswith("bearer"), "| tem curl/http:", ("curl" in r or "http" in r))'
-            exit 1
+            echo "PULAR=1" >> "$GITHUB_ENV"; exit 0
           fi
           echo "::add-mask::$ID"
           echo "CLOUDFLARE_ACCOUNT_ID=$ID" >> "$GITHUB_ENV"
@@ -70,4 +71,4 @@ jobs:
         run: npm ci --prefix ferramentas
       - name: Publicar na Cloudflare Pages
         if: env.PULAR != '1'
-        run: ferramentas/node_modules/.bin/wrangler pages deploy site --project-name compras-sou-coluna --branch main --commit-dirty=true
+        run: bash scripts/publicar.sh
