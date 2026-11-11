@@ -21,13 +21,26 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
+      # O backup tem e-mails e valores de compras: só é gravado se o repositório for privado.
+      - name: Conferir se o repositório é privado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(gh api "repos/${{ github.repository }}" --jq .private)" != "true" ]; then
+            echo "::warning::Backup não feito: o repositório é público. Deixe-o privado (Settings > Change visibility) para ativar o backup."
+            echo "PULAR=1" >> "$GITHUB_ENV"
+          fi
       - uses: actions/checkout@v4
+        if: env.PULAR != '1'
       - uses: actions/setup-node@v4
+        if: env.PULAR != '1'
         with:
           node-version: 22
       - name: Instalar o wrangler
+        if: env.PULAR != '1'
         run: npm ci --prefix ferramentas
       - name: Exportar o banco (sem senhas)
+        if: env.PULAR != '1'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -36,6 +49,7 @@ jobs:
           npx wrangler d1 export compras-sou-coluna --remote -y --output ../backups/banco.sql \
             --table usuarios --table unidades --table membros --table compras
       - name: Guardar no repositório
+        if: env.PULAR != '1'
         run: |
           git config user.name "backup-automatico"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

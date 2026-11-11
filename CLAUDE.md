@@ -1,6 +1,6 @@
 # Guia de Compras · Abertura de Unidade Sou Coluna
 
-Checklist de compras para franqueados abrirem uma nova unidade da Sou Coluna. Ele substitui a planilha `src/planilha-original.xlsx` por um material bonito para enviar ao franqueado, em três versões geradas da mesma base:
+Checklist de compras para franqueados abrirem uma nova unidade da Sou Coluna. Ele substitui a planilha `src/planilha-original.xlsx` (fica só no computador, fora do GitHub: `src/` está no `.gitignore` e foi tirada do histórico, porque a aba RESUMO é interna) por um material bonito para enviar ao franqueado, em três versões geradas da mesma base:
 
 - **Site com login** (`site/` + `functions/`, Cloudflare Pages + banco D1, plano gratuito): o franqueado entra com e-mail e senha e vê só a(s) unidade(s) dele; o progresso fica no banco. A franqueadora tem um painel (`site/painel.html`) com todas as unidades. Passo a passo para colocar no ar: `README.md`.
 - **Offline** (`out/guia-compras-sou-coluna.html`): página única e autossuficiente. O franqueado marca o item como comprado, informa o valor pago e acompanha o andamento (% de itens, valor investido, economia ou estouro em relação à previsão). O estado fica salvo no `localStorage` do navegador. Também tem copiar resumo, exportar CSV, backup/restauração em JSON e impressão.
@@ -54,7 +54,7 @@ Se já existir um Chromium instalado e o `playwright install` não for possível
 - O progresso é gravado por item em `compras` (chave `unidade_id + item_id`, valor em centavos). O `item_id` é o slug do nome em `data.py`: **renomear um item faz o progresso dele sumir** nas unidades. Antes de publicar, migrar com `UPDATE compras SET item_id = 'novo' WHERE item_id = 'velho'` (comando no README).
 - O painel calcula os números no navegador a partir de `catalogo.js` + compras, com a mesma conta do guia (itens recorrentes fora do total; diferença só nos itens com valor).
 - Links do site sem `.html` (`/guia?u=...`, `/painel`, `/?codigo=...`), porque a Cloudflare Pages tira a extensão.
-- O repositório deve ficar **privado** (tem a planilha original com a aba RESUMO, os preços e o backup do banco com e-mails).
+- O repositório `soucoluna-br/compras-sou-coluna` está **público** por enquanto (decisão do usuário). Por isso a planilha original não vai para o GitHub e o backup semanal **só grava se o repositório for privado** (a automação confere antes). Nunca commitar dados de franqueados, a planilha ou segredos.
 
 ## Pendências (aguardando o Rossanão)
 

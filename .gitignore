@@ -3,3 +3,6 @@ __pycache__/
 .DS_Store
 node_modules/
 .wrangler/
+
+# planilha original: tem dados internos (aba RESUMO); fica só no computador, nunca no GitHub
+src/

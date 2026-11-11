@@ -59,11 +59,11 @@ Toda segunda-feira o GitHub copia o banco (contas, unidades, acessos e compras; 
    - `CLOUDFLARE_ACCOUNT_ID` (o Account ID)
 4. Para testar, abra **Actions → Backup do banco → Run workflow**. Em um minuto deve aparecer `backups/banco.sql` no repositório.
 
-> O repositório precisa ser **privado**: o backup tem os e-mails dos franqueados e os valores das compras.
+> O backup só é gravado se o repositório for **privado**, porque tem os e-mails dos franqueados e os valores das compras. Enquanto ele estiver público, a automação avisa e não grava nada. Para deixar privado: no GitHub, abra o repositório → **Settings** → role até o fim (**Danger Zone**) → **Change visibility → Change to private**.
 
 ### 5. Endereço próprio (opcional)
 
-No projeto do Pages: **Custom domains → Set up a custom domain** → por exemplo `compras.soucoluna.com.br`. Se o domínio está na HostGator, crie no **cPanel → Editor de Zona DNS** um registro **CNAME** `compras` apontando para `compras-sou-coluna.pages.dev`.
+No projeto do Pages: **Custom domains → Set up a custom domain** → por exemplo `compras.soucoluna.com`. Como o domínio já está nessa conta da Cloudflare, ela cria o apontamento sozinha. (Se um dia usar um domínio que está na HostGator, crie no **cPanel → Editor de Zona DNS** um registro **CNAME** `compras` apontando para `compras-sou-coluna.pages.dev`.)
 
 ---
 
