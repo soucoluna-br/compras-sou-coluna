@@ -45,6 +45,7 @@ Se já existir um Chromium instalado e o `playwright install` não for possível
 - Links, CNPJs e telefones foram removidos (os links ficavam desatualizados). O modelo que estava no link foi para a especificação do item. O nome do fornecedor homologado continua.
 - Ficaram fora do material: o Blazer (qtd 0), as notas internas de cálculo de obra (BH/Fortaleza) e a aba RESUMO (tem o ganho da franqueadora e prints de benchmark, que são internos).
 - Nunca usar "avaliação" em material de clínica, sempre "consulta" (ex.: "Puff para a sala de consulta").
+- Nunca mostrar parcelamento ("12x de..."): forma de pagamento é decisão de quem compra e depende da loja. Abaixo do valor estimado vai "R$ X por unidade" (ou "por m²"), nunca "2 × R$ X", que parece parcela.
 - Itens em ordem alfabética dentro de cada categoria. Etapas na ordem da jornada: 1 Obra/projeto/marcenaria → 2 Enxoval → 3 Produtos da franqueadora → 4 Estoque inicial.
 - Marca: coral `#EF7B60`, fontes Poppins (títulos) e Inter (texto).
 - Totais conferidos com a planilha: Obra R$ 164.169,40 · Enxoval R$ 122.831 · Franqueadora R$ 13.670 · Estoque R$ 1.968 · **Total R$ 302.638,40** (130 itens).

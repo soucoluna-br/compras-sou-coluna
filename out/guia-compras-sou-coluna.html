@@ -720,7 +720,8 @@ function mediaHTML(it){
 }
 function unitTxt(it){
   if(it.recurring) return it.spec==='Mensalidade'?'valor mensal':'a contratar';
-  const q=qtdDe(it); return q===1 && !it.uom ? 'valor de referência' : `${q.toLocaleString('pt-BR')}${it.uom?' '+it.uom:''} × ${fmt(it.unit)}`;
+  // nunca "2 × R$ 2.000": em loja isso se lê como parcelamento, que depende de quem compra e da loja
+  return qtdDe(it)===1 && !it.uom ? 'valor de referência' : `${fmt(it.unit)} por ${it.uom||'unidade'}`;
 }
 function cardHTML(it){
   const supLine = it.supplier ? `<p class="sup">${it.supply==='marca'?'Marca':'Fornecedor'}: <b>${esc(it.supplier)}</b></p>` : '';
