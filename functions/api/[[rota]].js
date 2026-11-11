@@ -25,6 +25,9 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS sessoes_usuario ON sessoes(user_id)`,
   `CREATE TABLE IF NOT EXISTS links_senha (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE, expira_em TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS tentativas (chave TEXT PRIMARY KEY, n INTEGER NOT NULL, ate INTEGER NOT NULL)`,
+  // catálogo editável pela franqueadora: só os itens alterados, criados ou removidos (o resto vem de data.py)
+  `CREATE TABLE IF NOT EXISTS catalogo (id TEXT PRIMARY KEY, dados TEXT NOT NULL, removido INTEGER NOT NULL DEFAULT 0, atualizado_em TEXT NOT NULL, atualizado_por TEXT)`,
+  `CREATE TABLE IF NOT EXISTS catalogo_fotos (item_id TEXT PRIMARY KEY, base64 TEXT, tipo TEXT, ajuste TEXT NOT NULL DEFAULT 'contain', removida INTEGER NOT NULL DEFAULT 0, versao INTEGER NOT NULL, atualizado_em TEXT NOT NULL)`,
 ];
 let schemaPronto = false;
 
@@ -382,6 +385,116 @@ rota("POST", "/usuarios/:uid/link-senha", async (c) => {
   const token = aleatorio(24), expira = emDias(LINK_SENHA_DIAS);
   await c.env.DB.prepare("INSERT INTO links_senha (token_hash, user_id, expira_em) VALUES (?1, ?2, ?3)").bind(await sha256(token), alvo.id, expira).run();
   return json({ token, email: alvo.email, expira_em: expira });
+});
+
+// ---------- catálogo (franqueadora edita; todos leem) ----------
+const ETAPAS = ["obra", "enxoval", "franqueadora", "estoque"];
+const ICONES = ["projeto", "obra", "marcenaria", "clima", "clinico", "apoio", "movel", "eletro", "utensilio", "escritorio",
+  "uniforme", "info", "servico", "expo", "venda", "atendimento", "copa", "papel", "higiene"];
+const FORNECIMENTOS = ["homologado", "marca", "livre"];
+const idItem = (v) => { const s = String(v || ""); if (!/^[a-z0-9-]{1,120}$/.test(s)) throw new Erro(400, "dados"); return s; };
+function numero(v, min, max, obrigatorio) {
+  if (v == null || v === "") { if (obrigatorio) throw new Erro(400, "dados"); return null; }
+  const n = Number(v);
+  if (!isFinite(n) || n < min || n > max) throw new Erro(400, "dados");
+  return Math.round(n * 100) / 100;
+}
+function camposItem(b) {
+  const etapa = String(b.etapa || "");
+  if (!ETAPAS.includes(etapa)) throw new Erro(400, "dados");
+  const fornecimento = b.fornecimento || null;
+  if (fornecimento && !FORNECIMENTOS.includes(fornecimento)) throw new Erro(400, "dados");
+  const icone = ICONES.includes(b.icone) ? b.icone : "utensilio";
+  return {
+    etapa, categoria: texto(b.categoria, 80, true), icone,
+    nome: texto(b.nome, 160, true), especificacao: texto(b.especificacao, 300), observacao: texto(b.observacao, 400),
+    qtd: numero(b.qtd, 0, 100000, true), valor_unit: numero(b.valor_unit, 0, 1e8, false),   // valor vazio = recorrente/a definir
+    fornecimento, fornecedor: texto(b.fornecedor, 120), unidade_medida: texto(b.unidade_medida, 20),
+  };
+}
+async function salvarItem(env, u, id, dados, removido) {
+  await env.DB.prepare(`INSERT INTO catalogo (id, dados, removido, atualizado_em, atualizado_por) VALUES (?1, ?2, ?3, ?4, ?5)
+     ON CONFLICT(id) DO UPDATE SET dados = excluded.dados, removido = excluded.removido, atualizado_em = excluded.atualizado_em,
+       atualizado_por = excluded.atualizado_por`).bind(id, JSON.stringify(dados), removido ? 1 : 0, agoraIso(), u.id).run();
+}
+// Público (sem login): as páginas do guia já são públicas; assim o build do PDF também consegue ler.
+rota("GET", "/catalogo", async (c) => {
+  const [it, fo] = await c.env.DB.batch([
+    c.env.DB.prepare("SELECT id, dados, removido, atualizado_em FROM catalogo ORDER BY id"),
+    c.env.DB.prepare("SELECT item_id, base64 IS NOT NULL AS tem_foto, ajuste, removida, versao FROM catalogo_fotos ORDER BY item_id"),
+  ]);
+  return json({
+    itens: it.results.map((r) => ({ id: r.id, removido: !!r.removido, atualizado_em: r.atualizado_em, ...JSON.parse(r.dados) })),
+    fotos: fo.results.map((r) => ({ item_id: r.item_id, tem_foto: !!r.tem_foto, ajuste: r.ajuste, removida: !!r.removida, versao: r.versao })),
+  });
+});
+rota("GET", "/foto/:id", async (c) => {
+  const r = await c.env.DB.prepare("SELECT base64, tipo, versao FROM catalogo_fotos WHERE item_id = ?1 AND removida = 0 AND base64 IS NOT NULL")
+    .bind(idItem(c.p.id)).first();
+  if (!r) throw new Erro(404, "nao_encontrado");
+  return new Response(deb64u(r.base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")), {
+    headers: { "Content-Type": r.tipo, "Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff" },
+  });
+});
+rota("POST", "/catalogo/novo", async (c) => {
+  const u = await exigirSessao(c); exigirFranqueadora(u);
+  const d = camposItem(c.body);
+  const id = "novo-" + (d.nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "item")
+    + "-" + hex(4).toLowerCase();
+  await salvarItem(c.env, u, id, d, false);
+  return json({ id }, 201);
+});
+rota("POST", "/catalogo/:id", async (c) => {
+  const u = await exigirSessao(c); exigirFranqueadora(u);
+  await salvarItem(c.env, u, idItem(c.p.id), camposItem(c.body), false);
+  return json({ ok: true });
+});
+rota("POST", "/catalogo/:id/remover", async (c) => {
+  const u = await exigirSessao(c); exigirFranqueadora(u);
+  const id = idItem(c.p.id);
+  const atual = await c.env.DB.prepare("SELECT dados FROM catalogo WHERE id = ?1").bind(id).first();
+  await salvarItem(c.env, u, id, atual ? JSON.parse(atual.dados) : {}, true);
+  return json({ ok: true });
+});
+// Volta o item ao original do guia (desfaz edição, remoção e foto). Item criado no painel é apagado.
+rota("POST", "/catalogo/:id/restaurar", async (c) => {
+  const u = await exigirSessao(c); exigirFranqueadora(u);
+  const id = idItem(c.p.id);
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM catalogo WHERE id = ?1").bind(id),
+    c.env.DB.prepare("DELETE FROM catalogo_fotos WHERE item_id = ?1").bind(id),
+  ]);
+  return json({ ok: true });
+});
+const TIPOS_FOTO = { "image/webp": "UklGR", "image/jpeg": "/9j/", "image/png": "iVBOR" };
+rota("POST", "/catalogo/:id/foto", async (c) => {
+  const u = await exigirSessao(c); exigirFranqueadora(u);
+  const id = idItem(c.p.id), b = c.body;
+  const ajuste = b.ajuste === "cover" ? "cover" : "contain";
+  if (b.remover) {
+    await c.env.DB.prepare(`INSERT INTO catalogo_fotos (item_id, base64, tipo, ajuste, removida, versao, atualizado_em) VALUES (?1, NULL, NULL, ?2, 1, ?3, ?4)
+       ON CONFLICT(item_id) DO UPDATE SET base64 = NULL, tipo = NULL, removida = 1, versao = excluded.versao, atualizado_em = excluded.atualizado_em`)
+      .bind(id, ajuste, Date.now(), agoraIso()).run();
+    return json({ ok: true });
+  }
+  if (b.base64 == null) {   // só muda o enquadramento (vale para a foto atual, nova ou original)
+    await c.env.DB.prepare(`INSERT INTO catalogo_fotos (item_id, base64, tipo, ajuste, removida, versao, atualizado_em) VALUES (?1, NULL, NULL, ?2, 0, ?3, ?4)
+       ON CONFLICT(item_id) DO UPDATE SET ajuste = excluded.ajuste, versao = excluded.versao, atualizado_em = excluded.atualizado_em`)
+      .bind(id, ajuste, Date.now(), agoraIso()).run();
+    return json({ ok: true });
+  }
+  const tipo = String(b.tipo || ""), dados = String(b.base64 || "");
+  if (!TIPOS_FOTO[tipo] || !dados.startsWith(TIPOS_FOTO[tipo]) || dados.length > 1400000 || !/^[A-Za-z0-9+/=]+$/.test(dados)) throw new Erro(400, "foto_invalida");
+  const versao = Date.now();
+  await c.env.DB.prepare(`INSERT INTO catalogo_fotos (item_id, base64, tipo, ajuste, removida, versao, atualizado_em) VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6)
+     ON CONFLICT(item_id) DO UPDATE SET base64 = excluded.base64, tipo = excluded.tipo, ajuste = excluded.ajuste, removida = 0,
+       versao = excluded.versao, atualizado_em = excluded.atualizado_em`).bind(id, dados, tipo, ajuste, versao, agoraIso()).run();
+  return json({ ok: true, versao });
+});
+rota("POST", "/catalogo/:id/foto/restaurar", async (c) => {
+  const u = await exigirSessao(c); exigirFranqueadora(u);
+  await c.env.DB.prepare("DELETE FROM catalogo_fotos WHERE item_id = ?1").bind(idItem(c.p.id)).run();
+  return json({ ok: true });
 });
 
 // ---------- entrada ----------

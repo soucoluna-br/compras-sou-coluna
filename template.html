@@ -591,8 +591,9 @@ html.online body:not(.pronto){visibility:hidden}
 <div class="toast" id="toast"></div>
 
 <script>
-const SECTIONS = /*__DATA__*/null;
-const IMAGES = /*__IMAGES__*/{};
+// catálogo do guia (data.py); no site, a franqueadora pode alterar (ver montarModelo no boot)
+let SECTIONS = /*__DATA__*/null;
+let IMAGES = /*__IMAGES__*/{};
 
 const ICONS = {
   projeto:'<path d="M8 40V10l6-4h26v34H8z"/><path d="M14 6v34"/><path d="M20 16h14M20 23h14M20 30h8"/>',
@@ -620,19 +621,23 @@ const CHECK = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" strok
 const BULB = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>';
 
 /* ---------- data model ---------- */
-const ITEMS = [];
-SECTIONS.forEach((s,si)=>{
-  s.items=[];
-  s.cats.forEach(c=>{
-    c.items.forEach(it=>{
-      it.sec=s.id; it.secIdx=si; it.cat=c.name; it.catKey=c.key;
-      it.prev = it.unit!=null ? Math.round(it.qty*it.unit*100)/100 : null;
-      it.recurring = it.unit==null;
-      ITEMS.push(it); s.items.push(it);
+let ITEMS = [], BYID = {};
+function montarModelo(){
+  ITEMS = [];
+  SECTIONS.forEach((s,si)=>{
+    s.items=[];
+    s.cats.forEach(c=>{
+      c.items.forEach(it=>{
+        it.sec=s.id; it.secIdx=si; it.cat=c.name; it.catKey=c.key;
+        it.prev = it.unit!=null ? Math.round(it.qty*it.unit*100)/100 : null;
+        it.recurring = it.unit==null;
+        ITEMS.push(it); s.items.push(it);
+      });
     });
   });
-});
-const BYID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
+  BYID = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
+}
+montarModelo();
 
 /* ---------- state ---------- */
 // ONLINE = versão do site com login (site/guia.html): o progresso vai para o banco (Cloudflare D1) via window.SC (app.js).
@@ -1023,6 +1028,7 @@ async function boot(){
     }
     if(!CTX) return; // sem login ou sem unidade: abrirGuia já redirecionou
     state={items:CTX.itens,unit:CTX.unidade.nome,resp:CTX.unidade.responsavel||''};
+    if(CTX.catalogo){ const r=SC.aplicarAjustes(SECTIONS, IMAGES, CTX.catalogo); SECTIONS=r.sections; IMAGES=r.images; montarModelo(); }
     prepararOnline();
   }
   const blank=new URLSearchParams(location.search).has('blank');

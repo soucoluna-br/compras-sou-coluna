@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Catálogo · Guia de Compras Sou Coluna</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilo.css">
+<script src="app.js"></script>
+<script src="catalogo.js"></script>
+</head>
+<body>
+<header class="topo">
+  <div class="wrap">
+    <img class="topo-logo" src="assets/logo-coral.png" alt="Sou Coluna">
+    <nav class="abas">
+      <a href="/painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M10 21v-6h4v6"/></svg>Unidades</a>
+      <a class="on" href="/catalogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>Catálogo</a>
+    </nav>
+    <span class="esp"></span>
+    <nav class="user-nav"><span class="who" id="who"></span><span class="avatar" id="avatar"></span><button type="button" class="tb-sair" data-sair>Sair</button></nav>
+  </div>
+</header>
+<section class="faixa">
+  <img src="assets/logo-white.png" alt="Sou Coluna">
+  <h1>Catálogo do guia</h1>
+  <div class="k">Itens, valores, fornecedores e fotos</div>
+</section>
+
+<div class="wrap">
+  <p class="aviso-cat"><b>As alterações valem na hora para todas as unidades.</b> O que as unidades já marcaram continua valendo, mesmo se você mudar o nome do item. Quantidades e valores aparecem para elas como sugestão e estimativa.</p>
+
+  <div class="barra">
+    <div class="tit"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>Itens <small id="n-itens"></small></div>
+    <span class="esp"></span>
+    <label class="busca"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Buscar item, categoria ou fornecedor"></label>
+    <select id="f-etapa" aria-label="Etapa"><option value="">Todas as etapas</option></select>
+    <select id="f-situ" aria-label="Situação">
+      <option value="">Todos os itens</option>
+      <option value="alterado">Alterados por você</option>
+      <option value="novo">Criados por você</option>
+      <option value="semfoto">Sem foto</option>
+      <option value="removido">Removidos</option>
+    </select>
+    <button class="b pri sm" id="b-novo" type="button">+ Novo item</button>
+  </div>
+
+  <main class="cat-lista" id="lista"><div class="spin" aria-label="Carregando"></div></main>
+</div>
+
+<dialog id="d-item" class="largo">
+  <form class="dlg" id="f-item" novalidate>
+    <h3 id="di-titulo">Editar item</h3>
+    <div class="msg" hidden></div>
+    <div class="foto-ed">
+      <div class="foto-box" id="foto-box"></div>
+      <div class="foto-acoes">
+        <label class="b ghost sm" style="cursor:pointer">Trocar foto<input type="file" id="i-foto" accept="image/*" hidden></label>
+        <button class="b ghost sm" type="button" id="b-tirar-foto">Tirar foto</button>
+        <button class="b ghost sm" type="button" id="b-foto-orig" hidden>Voltar à foto original</button>
+        <label class="chk-lin"><input type="checkbox" id="i-cover"> Foto preenche o card (para foto de ambiente)</label>
+      </div>
+    </div>
+    <div class="field"><label for="i-nome">Nome do item</label><input id="i-nome" required></div>
+    <div class="field"><label for="i-espec">Especificação</label><input id="i-espec" placeholder="Ex.: modelo, tamanho, cor"></div>
+    <div class="grid2">
+      <div class="field"><label for="i-etapa">Etapa</label><select id="i-etapa"></select></div>
+      <div class="field"><label for="i-cat">Categoria</label><input id="i-cat" list="l-cats" required><datalist id="l-cats"></datalist></div>
+    </div>
+    <div class="field" id="campo-icone" hidden><label for="i-icone">Ícone da categoria nova</label><select id="i-icone"></select></div>
+    <div class="grid3">
+      <div class="field"><label for="i-qtd">Quantidade sugerida</label><input id="i-qtd" inputmode="decimal" required></div>
+      <div class="field"><label for="i-um">Medida</label><input id="i-um" placeholder="unidades"><small>Ex.: m². Vazio = unidades.</small></div>
+      <div class="field"><label for="i-valor">Valor de referência (R$)</label><input id="i-valor" inputmode="decimal" placeholder="0,00"><small>Por unidade. Vazio = mensalidade ou a definir.</small></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label for="i-forn">Fornecimento</label><select id="i-forn">
+        <option value="homologado">Fornecedor homologado</option>
+        <option value="marca">Marca obrigatória</option>
+        <option value="livre">Compra livre</option>
+        <option value="">Sem indicação</option>
+      </select></div>
+      <div class="field"><label for="i-fornecedor">Fornecedor ou marca</label><input id="i-fornecedor"></div>
+    </div>
+    <div class="field"><label for="i-obs">Observação</label><input id="i-obs" placeholder="Dica que aparece no card"></div>
+    <div class="foot">
+      <button class="b danger sm" type="button" id="b-remover">Remover item</button>
+      <button class="b ghost sm" type="button" id="b-original" hidden>Voltar ao original</button>
+      <span class="spacer"></span>
+      <button class="b ghost" type="button" data-fechar>Cancelar</button>
+      <button class="b pri" type="submit">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = SC.esc;
+const BASE = window.SECTIONS || [];
+const FOTOS_BASE = window.FOTOS_BASE || {};
+const ICONES = { projeto: "Projeto", obra: "Obra", marcenaria: "Marcenaria", clima: "Climatização", clinico: "Equipamento clínico", apoio: "Equipamento de apoio",
+  movel: "Móvel", eletro: "Eletrônico", utensilio: "Utensílio", escritorio: "Escritório", uniforme: "Uniforme", info: "Informática",
+  servico: "Serviço", expo: "Exposição", venda: "Venda", atendimento: "Atendimento", copa: "Copa", papel: "Papelaria", higiene: "Higiene e limpeza" };
+const FORN = { homologado: ["Fornecedor homologado", "h"], marca: ["Marca obrigatória", "m"], livre: ["Compra livre", "l"] };
+
+// item original (data.py) por id, com etapa e categoria
+const ORIG = {};
+BASE.forEach((s) => s.cats.forEach((c) => c.items.forEach((i) => { ORIG[i.id] = { ...i, etapa: s.id, categoria: c.name, icone: c.key }; })));
+
+const fmt = (v) => v == null || isNaN(v) ? "—" : "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: Math.round(v * 100) % 100 ? 2 : 0, maximumFractionDigits: 2 });
+const num = (s) => { s = String(s == null ? "" : s).replace(/[R$\s]/g, ""); if (!s) return null;
+  if (s.includes(",")) s = s.replace(/\./g, "").replace(",", "."); const v = parseFloat(s); return isNaN(v) ? NaN : Math.round(v * 100) / 100; };
+const numTxt = (v) => v == null ? "" : v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+let toastT;
+function toast(t) { const el = $("toast"); el.textContent = t; el.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove("on"), 2800); }
+function armar(btn, txt, acao) {
+  if (!btn.classList.contains("arm")) { btn.dataset.orig = btn.dataset.orig || btn.textContent; btn.classList.add("arm"); btn.textContent = txt;
+    clearTimeout(btn._t); btn._t = setTimeout(() => desarmar(btn), 4000); return; }
+  desarmar(btn); acao();
+}
+function desarmar(btn) { clearTimeout(btn._t); btn.classList.remove("arm"); if (btn.dataset.orig) btn.textContent = btn.dataset.orig; }
+
+/* ---------- estado ---------- */
+let AJ = { itens: [], fotos: [] }, SECS = [], IMGS = {}, LISTA = [];
+const ajusteDe = (id) => AJ.itens.find((r) => r.id === id);
+const fotoDe = (id) => AJ.fotos.find((f) => f.item_id === id);
+
+async function carregar() {
+  AJ = await SC.api("catalogo");
+  const r = SC.aplicarAjustes(BASE, FOTOS_BASE, AJ);
+  SECS = r.sections; IMGS = r.images;
+  LISTA = [];
+  SECS.forEach((s, si) => s.cats.forEach((c) => c.items.forEach((i) => LISTA.push({ ...i, etapa: s.id, etapaIdx: si, categoria: c.name, icone: c.key }))));
+  // removidos também aparecem (filtro "Removidos"), com os dados que tinham
+  AJ.itens.filter((r) => r.removido).forEach((r) => {
+    const o = ORIG[r.id], d = r.nome ? r : null;
+    const base = d ? { id: r.id, name: r.nome, spec: r.especificacao, qty: r.qtd, unit: r.valor_unit, uom: r.unidade_medida, supply: r.fornecimento,
+      supplier: r.fornecedor, note: r.observacao, etapa: r.etapa, categoria: r.categoria, icone: r.icone } : o;
+    if (base) LISTA.push({ ...base, etapaIdx: BASE.findIndex((s) => s.id === base.etapa), removido: true });
+  });
+  desenhar();
+}
+
+function situacao(it) {
+  const a = ajusteDe(it.id), f = fotoDe(it.id), tags = [];
+  if (it.removido) tags.push('<span class="tag warn">Removido</span>');
+  else if (it.id.startsWith("novo-")) tags.push('<span class="tag ok">Criado por você</span>');
+  else if (a) tags.push('<span class="tag">Alterado</span>');
+  if (f && f.tem_foto && !f.removida) tags.push('<span class="tag">Foto nova</span>');
+  if (f && f.removida) tags.push('<span class="tag">Foto retirada</span>');
+  return tags.join(" ");
+}
+
+function desenhar() {
+  const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const q = norm($("q").value.trim()), et = $("f-etapa").value, si = $("f-situ").value;
+  const lista = LISTA.filter((it) => {
+    if (si === "removido" ? !it.removido : it.removido) return false;
+    if (et && it.etapa !== et) return false;
+    if (si === "alterado" && !(ajusteDe(it.id) || fotoDe(it.id)) ) return false;
+    if (si === "alterado" && it.id.startsWith("novo-")) return false;
+    if (si === "novo" && !it.id.startsWith("novo-")) return false;
+    if (si === "semfoto" && IMGS[it.id]) return false;
+    return !q || norm(`${it.name} ${it.spec} ${it.categoria} ${it.supplier}`).includes(q);
+  }).sort((a, b) => a.etapaIdx - b.etapaIdx || a.categoria.localeCompare(b.categoria, "pt-BR") || a.name.localeCompare(b.name, "pt-BR"));
+  $("n-itens").textContent = `${lista.length} ${lista.length === 1 ? "item" : "itens"}`;
+  if (!lista.length) { $("lista").innerHTML = '<div class="vazio">Nenhum item com esses filtros.</div>'; return; }
+  $("lista").innerHTML = lista.map((it) => {
+    const img = !it.removido && IMGS[it.id];
+    const f = it.supply && FORN[it.supply];
+    const valor = it.unit == null ? "Mensalidade / a definir" : `${fmt(Math.round(it.qty * it.unit * 100) / 100)} <small>${numTxt(it.qty)} ${it.uom || (it.qty === 1 ? "unidade" : "unidades")} · ${fmt(it.unit)} por ${it.uom || "unidade"}</small>`;
+    return `<article class="cat-row${it.removido ? " removido" : ""}" data-id="${esc(it.id)}">
+      <div class="cat-foto">${img ? `<img src="${esc(img.src)}" alt="" loading="lazy">` : "<span>sem foto</span>"}</div>
+      <div class="cat-info"><b>${esc(it.name)}</b>${it.spec ? `<small>${esc(it.spec)}</small>` : ""}
+        <div class="cat-meta">${esc(BASE[it.etapaIdx] ? BASE[it.etapaIdx].short : "")} · ${esc(it.categoria)}${f ? ` · <span class="bdg ${f[1]}">${f[0]}</span>` : ""}${it.supplier ? ` · ${esc(it.supplier)}` : ""}</div>
+        <div class="cat-meta">${situacao(it)}</div></div>
+      <div class="cat-valor">${valor}</div>
+      <div class="cat-acts">${it.removido ? '<button class="b ghost sm" type="button" data-a="reativar">Restaurar</button>' : '<button class="b ghost sm" type="button" data-a="editar">Editar</button>'}</div>
+    </article>`;
+  }).join("");
+}
+
+/* ---------- formulário ---------- */
+let edit = null, fotoNova = null, fotoAcao = null;   // fotoAcao: null | "remover" | "original"
+function categoriasDe(etapa) { const s = SECS.find((x) => x.id === etapa) || BASE.find((x) => x.id === etapa); return s ? s.cats.map((c) => ({ name: c.name, key: c.key })) : []; }
+function atualizarCategorias() {
+  const cats = categoriasDe($("i-etapa").value);
+  $("l-cats").innerHTML = cats.map((c) => `<option value="${esc(c.name)}">`).join("");
+  const existe = cats.find((c) => c.name.toLowerCase() === $("i-cat").value.trim().toLowerCase());
+  $("campo-icone").hidden = !!existe || !$("i-cat").value.trim();
+}
+function desenharFoto() {
+  const box = $("foto-box");
+  let src = null;
+  if (fotoNova) src = fotoNova.preview;
+  else if (fotoAcao === "remover") src = null;
+  else if (fotoAcao === "original") src = FOTOS_BASE[edit.id] ? FOTOS_BASE[edit.id].src : null;
+  else src = IMGS[edit.id] ? IMGS[edit.id].src : null;
+  box.innerHTML = src ? `<img src="${esc(src)}" alt="Foto do item">` : "<span>Sem foto</span>";
+  box.classList.toggle("cover", $("i-cover").checked);
+  const f = fotoDe(edit.id);
+  $("b-foto-orig").hidden = !(FOTOS_BASE[edit.id] && (fotoNova || fotoAcao === "remover" || (f && (f.tem_foto || f.removida))) && fotoAcao !== "original");
+  $("b-tirar-foto").hidden = !src;
+}
+function abrir(it) {
+  edit = it || { id: null }; fotoNova = null; fotoAcao = null;
+  const f = $("f-item"); f.querySelector(".msg").hidden = true;
+  $("di-titulo").textContent = it ? "Editar item" : "Novo item";
+  $("i-etapa").innerHTML = BASE.map((s, i) => `<option value="${s.id}">${i + 1}. ${esc(s.short)}</option>`).join("");
+  $("i-icone").innerHTML = Object.entries(ICONES).map(([k, n]) => `<option value="${k}">${n}</option>`).join("");
+  $("i-nome").value = it ? it.name : ""; $("i-espec").value = it ? it.spec || "" : "";
+  $("i-etapa").value = it ? it.etapa : "enxoval"; $("i-cat").value = it ? it.categoria : "";
+  $("i-icone").value = it ? it.icone || "utensilio" : "utensilio";
+  $("i-qtd").value = it ? numTxt(it.qty) : "1"; $("i-um").value = it ? it.uom || "" : "";
+  $("i-valor").value = it && it.unit != null ? it.unit.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "";
+  $("i-forn").value = it ? it.supply || "" : "livre"; $("i-fornecedor").value = it ? it.supplier || "" : ""; $("i-obs").value = it ? it.note || "" : "";
+  $("i-cover").checked = !!(it && IMGS[it.id] && IMGS[it.id].fit === "cover");
+  $("b-remover").hidden = !it; desarmar($("b-remover"));
+  $("b-original").hidden = !(it && ORIG[it.id] && (ajusteDe(it.id) || fotoDe(it.id))); desarmar($("b-original"));
+  atualizarCategorias();
+  if (it) desenharFoto(); else { $("foto-box").innerHTML = "<span>Sem foto</span>"; $("b-foto-orig").hidden = true; $("b-tirar-foto").hidden = true; }
+  $("d-item").showModal();
+}
+// lê a foto escolhida e reduz no próprio navegador (até 900 px, WebP ou JPEG)
+async function prepararFoto(arquivo) {
+  const img = await new Promise((ok, erro) => { const i = new Image(); i.onload = () => ok(i); i.onerror = erro; i.src = URL.createObjectURL(arquivo); });
+  const esc2 = Math.min(1, 900 / Math.max(img.naturalWidth, img.naturalHeight));
+  const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * esc2); cv.height = Math.round(img.naturalHeight * esc2);
+  const g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height);
+  URL.revokeObjectURL(img.src);
+  let url = cv.toDataURL("image/webp", 0.82), tipo = "image/webp";
+  if (!url.startsWith("data:image/webp")) { url = cv.toDataURL("image/jpeg", 0.85); tipo = "image/jpeg"; }
+  return { tipo, base64: url.split(",")[1], preview: url };
+}
+$("i-foto").addEventListener("change", async (ev) => {
+  const a = ev.target.files[0]; ev.target.value = ""; if (!a) return;
+  try { fotoNova = await prepararFoto(a); fotoAcao = null; desenharFoto(); }
+  catch (e) { toast("Não foi possível ler essa imagem."); }
+});
+$("b-tirar-foto").addEventListener("click", () => { fotoNova = null; fotoAcao = "remover"; desenharFoto(); });
+$("b-foto-orig").addEventListener("click", () => { fotoNova = null; fotoAcao = "original"; $("i-cover").checked = !!(FOTOS_BASE[edit.id] && FOTOS_BASE[edit.id].fit === "cover"); desenharFoto(); });
+$("i-cover").addEventListener("change", () => $("foto-box").classList.toggle("cover", $("i-cover").checked));
+$("i-etapa").addEventListener("change", atualizarCategorias);
+$("i-cat").addEventListener("input", atualizarCategorias);
+
+function dadosDoForm() {
+  const cat = $("i-cat").value.trim(), existe = categoriasDe($("i-etapa").value).find((c) => c.name.toLowerCase() === cat.toLowerCase());
+  return { nome: $("i-nome").value.trim(), especificacao: $("i-espec").value.trim(), etapa: $("i-etapa").value,
+    categoria: existe ? existe.name : cat, icone: existe ? existe.key : $("i-icone").value,
+    qtd: num($("i-qtd").value), unidade_medida: $("i-um").value.trim(), valor_unit: num($("i-valor").value),
+    fornecimento: $("i-forn").value || null, fornecedor: $("i-fornecedor").value.trim(), observacao: $("i-obs").value.trim() };
+}
+const igual = (a, b) => (a == null || a === "" ? null : a) === (b == null || b === "" ? null : b);
+function mudouDados(d, it) {
+  return !(igual(d.nome, it.name) && igual(d.especificacao, it.spec) && d.etapa === it.etapa && d.categoria === it.categoria
+    && d.qtd === it.qty && igual(d.unidade_medida, it.uom) && igual(d.valor_unit, it.unit) && igual(d.fornecimento, it.supply)
+    && igual(d.fornecedor, it.supplier) && igual(d.observacao, it.note));
+}
+$("f-item").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const f = ev.currentTarget, msg = f.querySelector(".msg"), btn = f.querySelector("button[type=submit]");
+  const erro = (t) => { msg.className = "msg erro"; msg.textContent = t; msg.hidden = false; };
+  const d = dadosDoForm();
+  if (!d.nome) return erro("Informe o nome do item.");
+  if (!d.categoria) return erro("Informe a categoria.");
+  if (d.qtd == null || isNaN(d.qtd) || d.qtd < 0) return erro("Informe a quantidade sugerida (um número).");
+  if (isNaN(d.valor_unit) || (d.valor_unit != null && d.valor_unit < 0)) return erro("O valor de referência precisa ser um número, por exemplo 1.250,00.");
+  btn.disabled = true;
+  try {
+    let id = edit.id;
+    if (!id) id = (await SC.api("catalogo/novo", d)).id;
+    else if (mudouDados(d, edit)) await SC.api("catalogo/" + encodeURIComponent(id), d);
+    const cover = $("i-cover").checked ? "cover" : "contain";
+    const coverAntes = !!(edit.id && IMGS[edit.id] && IMGS[edit.id].fit === "cover");
+    if (fotoNova) await SC.api(`catalogo/${encodeURIComponent(id)}/foto`, { base64: fotoNova.base64, tipo: fotoNova.tipo, ajuste: cover });
+    else if (fotoAcao === "remover") await SC.api(`catalogo/${encodeURIComponent(id)}/foto`, { remover: true });
+    else if (fotoAcao === "original") await SC.api(`catalogo/${encodeURIComponent(id)}/foto/restaurar`, {});
+    else if (edit.id && IMGS[edit.id] && $("i-cover").checked !== coverAntes) await SC.api(`catalogo/${encodeURIComponent(id)}/foto`, { ajuste: cover });
+    $("d-item").close(); toast(edit.id ? "Item salvo. Já vale para todas as unidades." : "Item criado. Já aparece para todas as unidades.");
+    await carregar();
+  } catch (e) { erro(SC.mensagemErro(e)); }
+  finally { btn.disabled = false; }
+});
+$("b-remover").addEventListener("click", (ev) => armar(ev.currentTarget, "Clique de novo: o item some do guia", async () => {
+  try { await SC.api(`catalogo/${encodeURIComponent(edit.id)}/remover`, {}); $("d-item").close(); toast("Item removido do guia."); await carregar(); }
+  catch (e) { toast(SC.mensagemErro(e)); }
+}));
+$("b-original").addEventListener("click", (ev) => armar(ev.currentTarget, "Clique de novo: desfaz suas alterações", async () => {
+  try { await SC.api(`catalogo/${encodeURIComponent(edit.id)}/restaurar`, {}); $("d-item").close(); toast("Item voltou ao original."); await carregar(); }
+  catch (e) { toast(SC.mensagemErro(e)); }
+}));
+
+/* ---------- lista e filtros ---------- */
+$("lista").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-a]"); if (!b) return;
+  const it = LISTA.find((x) => x.id === b.closest(".cat-row").dataset.id); if (!it) return;
+  if (b.dataset.a === "editar") return abrir(it);
+  if (b.dataset.a === "reativar") {
+    try {
+      if (ORIG[it.id]) await SC.api(`catalogo/${encodeURIComponent(it.id)}/restaurar`, {});
+      else await SC.api("catalogo/" + encodeURIComponent(it.id), { nome: it.name, especificacao: it.spec, etapa: it.etapa, categoria: it.categoria,
+        icone: it.icone, qtd: it.qty, unidade_medida: it.uom, valor_unit: it.unit, fornecimento: it.supply, fornecedor: it.supplier, observacao: it.note });
+      toast("Item de volta no guia."); await carregar();
+    } catch (e) { toast(SC.mensagemErro(e)); }
+  }
+});
+$("f-etapa").innerHTML += BASE.map((s, i) => `<option value="${s.id}">${i + 1}. ${esc(s.short)}</option>`).join("");
+["q", "f-etapa", "f-situ"].forEach((id) => $(id).addEventListener("input", desenhar));
+$("b-novo").addEventListener("click", () => abrir(null));
+document.addEventListener("click", (ev) => {
+  if (ev.target.closest("[data-fechar]")) ev.target.closest("dialog").close();
+  if (ev.target.closest("[data-sair]")) SC.sair();
+  if (ev.target.tagName === "DIALOG") ev.target.close();
+});
+
+(async function iniciar() {
+  try {
+    const eu = await SC.eu();
+    if (!eu || !eu.franqueadora) { location.replace("/"); return; }
+    $("who").textContent = eu.email; $("avatar").textContent = (eu.email || "?").charAt(0).toUpperCase();
+    await carregar();
+  } catch (e) {
+    $("lista").innerHTML = `<div class="vazio"><h3>Não foi possível carregar o catálogo</h3><p>${esc(SC.mensagemErro(e))} <a href="">Tentar de novo</a></p></div>`;
+  }
+})();
+</script>
+</body>
+</html>

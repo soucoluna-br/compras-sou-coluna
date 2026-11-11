@@ -139,6 +139,41 @@ def main():
         p = adm2.get("painel")[1]
         ok(len(p["unidades"]) == 1 and not [m for m in p["membros"] if m["unidade_id"] == Bid], "unidade excluída leva junto acessos e compras")
 
+        # ---------- catálogo editável pela franqueadora ----------
+        import base64, io, urllib.request
+        from PIL import Image
+        ok(Cliente(B).get("catalogo")[1] == {"itens": [], "fotos": []}, "catálogo sem alterações começa vazio (e é público)")
+        franq = Cliente(B); franq.post("entrar", {"email": "bruno@unidade.test", "senha": "senha-do-bruno"})
+        item = {"etapa": "enxoval", "categoria": "Eletrodomésticos e eletrônicos", "icone": "eletro", "nome": "Geladeira frost free",
+                "qtd": 1, "valor_unit": 2500, "fornecimento": None, "fornecedor": ""}
+        ok(franq.post("catalogo/enxoval-geladeira", item)[0] in (401, 403), "franqueado não altera o catálogo")
+        ok(adm2.post("catalogo/enxoval-geladeira", item)[0] == 200, "franqueadora altera nome, preço e tira o fornecimento")
+        ok(adm2.post("catalogo/enxoval-geladeira", {**item, "etapa": "outra"})[0] == 400, "etapa inválida é recusada")
+        ok(adm2.post("catalogo/enxoval-geladeira", {**item, "fornecimento": "qualquer"})[0] == 400, "fornecimento inválido é recusado")
+        ok(adm2.post("catalogo/enxoval-geladeira", {**item, "valor_unit": -1})[0] == 400, "valor negativo é recusado")
+        ok(adm2.post("catalogo/enxoval-geladeira", {**item, "nome": ""})[0] == 400, "item sem nome é recusado")
+        st, r, _ = adm2.post("catalogo/novo", {**item, "nome": "Bebedouro", "categoria": "Categoria nova", "icone": "copa"})
+        novo = r["id"]
+        ok(st == 201 and novo.startswith("novo-bebedouro-"), "franqueadora cria item novo")
+        ok(adm2.post("catalogo/enxoval-balde/remover")[0] == 200, "franqueadora remove item")
+        ids = {i["id"]: i for i in Cliente(B).get("catalogo")[1]["itens"]}
+        ok(ids["enxoval-geladeira"]["valor_unit"] == 2500 and ids["enxoval-geladeira"]["fornecimento"] is None
+           and ids["enxoval-balde"]["removido"] and ids[novo]["categoria"] == "Categoria nova", "catálogo devolve alteração, item novo e item removido")
+        buf = io.BytesIO(); Image.new("RGB", (40, 30), (239, 123, 96)).save(buf, "PNG"); png = buf.getvalue()
+        ok(adm2.post(f"catalogo/{novo}/foto", {"base64": base64.b64encode(png).decode(), "tipo": "image/png", "ajuste": "cover"})[0] == 200,
+           "franqueadora envia foto")
+        ok(adm2.post(f"catalogo/{novo}/foto", {"base64": "QUJDRA==", "tipo": "image/png"})[1]["erro"] == "foto_invalida", "arquivo que não é imagem é recusado")
+        ok(franq.post(f"catalogo/{novo}/foto", {"remover": True})[0] in (401, 403), "franqueado não mexe nas fotos")
+        resp = urllib.request.build_opener(urllib.request.ProxyHandler({})).open(f"{B}/api/foto/{novo}")
+        ok(resp.headers["Content-Type"] == "image/png" and resp.read() == png, "foto enviada é servida pelo site")
+        ok(adm2.post("catalogo/enxoval-geladeira/foto", {"remover": True})[0] == 200, "franqueadora tira a foto de um item")
+        fotos = {f["item_id"]: f for f in Cliente(B).get("catalogo")[1]["fotos"]}
+        ok(fotos["enxoval-geladeira"]["removida"] and fotos[novo]["tem_foto"] and fotos[novo]["ajuste"] == "cover", "catálogo informa fotos novas e retiradas")
+        ok(adm2.post("catalogo/enxoval-geladeira/restaurar")[0] == 200, "voltar ao original")
+        cat = Cliente(B).get("catalogo")[1]
+        ok("enxoval-geladeira" not in {i["id"] for i in cat["itens"]} and "enxoval-geladeira" not in {f["item_id"] for f in cat["fotos"]},
+           "voltar ao original desfaz dados e foto")
+
         # ---------- banco: senhas protegidas e backup ----------
         hashes = srv.sql("SELECT hash FROM senhas")
         ok(hashes and all(re.match(r"pbkdf2\$\d+\$", h["hash"]) for h in hashes), "senhas guardadas só como hash PBKDF2")

@@ -16,7 +16,8 @@
 <header class="topo">
   <div class="wrap">
     <img class="topo-logo" src="assets/logo-coral.png" alt="Sou Coluna">
-    <nav class="abas"><a class="on" href="/painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M10 21v-6h4v6"/></svg>Unidades</a></nav>
+    <nav class="abas"><a class="on" href="/painel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M10 21v-6h4v6"/></svg>Unidades</a>
+      <a href="/catalogo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>Catálogo</a></nav>
     <span class="esp"></span>
     <nav class="user-nav"><span class="who" id="who"></span><span class="avatar" id="avatar"></span><button type="button" class="tb-sair" data-sair>Sair</button></nav>
   </div>
@@ -107,15 +108,19 @@ const $ = (id) => document.getElementById(id);
 const esc = SC.esc;
 const SIMBOLO = "assets/symbol-white.png";
 
-/* ---------- catálogo (mesma conta do guia) ---------- */
-const ITEMS = [];
-(window.SECTIONS || []).forEach((s) => s.cats.forEach((c) => c.items.forEach((it) => {
-  it.prev = it.unit != null ? Math.round(it.qty * it.unit * 100) / 100 : null;
-  it.recurring = it.unit == null;
-  ITEMS.push(it);
-})));
-const BYID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
-const PREV_TOTAL = ITEMS.reduce((a, b) => a + (b.prev || 0), 0);
+/* ---------- catálogo (mesma conta do guia, já com as alterações da franqueadora) ---------- */
+let ITEMS = [], BYID = {}, PREV_TOTAL = 0;
+function montarCatalogo(secs) {
+  ITEMS = [];
+  secs.forEach((s) => s.cats.forEach((c) => c.items.forEach((it) => {
+    it.prev = it.unit != null ? Math.round(it.qty * it.unit * 100) / 100 : null;
+    it.recurring = it.unit == null;
+    ITEMS.push(it);
+  })));
+  BYID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
+  PREV_TOTAL = ITEMS.reduce((a, b) => a + (b.prev || 0), 0);
+}
+montarCatalogo(window.SECTIONS || []);
 
 /* ---------- formatação ---------- */
 const fmt = (v, dec) => {
@@ -187,7 +192,8 @@ function calcular(compras) {
 }
 
 async function carregar() {
-  const r = await SC.api("painel");
+  const [r, catalogo] = await Promise.all([SC.api("painel"), SC.api("catalogo")]);
+  montarCatalogo(SC.aplicarAjustes(window.SECTIONS || [], {}, catalogo).sections);
   const porUnidade = {}, membros = {};
   r.compras.forEach((c) => (porUnidade[c.unidade_id] = porUnidade[c.unidade_id] || []).push(c));
   r.membros.forEach((m) => (membros[m.unidade_id] = membros[m.unidade_id] || []).push(m));

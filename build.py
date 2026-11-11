@@ -91,8 +91,8 @@ symbol_white = data_uri(ROOT / "assets/symbol-white.png", 700)
 data_json = json.dumps(sections, ensure_ascii=False)
 
 
-def page(imgs, head_extra=""):
-    return (template.replace("/*__DATA__*/null", data_json)
+def page(imgs, head_extra="", secoes_json=None):
+    return (template.replace("/*__DATA__*/null", secoes_json or data_json)
                     .replace("/*__IMAGES__*/{}", json.dumps(imgs))
                     .replace("<!--__HEAD_EXTRA__-->", head_extra)
                     .replace("__LOGO_WHITE__", logo_white)
@@ -100,9 +100,58 @@ def page(imgs, head_extra=""):
                     .replace("__SYMBOL_WHITE__", symbol_white))
 
 
+def aplicar_ajustes(secs, imgs):
+    """Alterações feitas pela franqueadora no painel (baixadas por scripts/baixar_catalogo.py para ajustes/).
+    Mesma regra de SC.aplicarAjustes (site/app.js). Só entra na versão offline e no PDF: o site junta sozinho."""
+    arq = ROOT / "ajustes" / "catalogo.json"
+    if not arq.exists():
+        return secs, imgs
+    aj = json.loads(arq.read_text(encoding="utf-8"))
+    secs, imgs = json.loads(json.dumps(secs)), dict(imgs)
+    lugar = {i["id"]: c for s in secs for c in s["cats"] for i in c["items"]}
+    mexidas = set()
+    for r in aj["itens"]:
+        c = lugar.get(r["id"])
+        if c:
+            c["items"] = [x for x in c["items"] if x["id"] != r["id"]]
+    for r in aj["itens"]:
+        if r.get("removido"):
+            imgs.pop(r["id"], None); continue
+        sec = next((x for x in secs if x["id"] == r.get("etapa")), None)
+        if not sec or not r.get("nome"):
+            continue
+        cat = next((c for c in sec["cats"] if c["name"].lower() == str(r.get("categoria") or "").lower()), None)
+        if not cat:
+            cat = {"name": r["categoria"], "key": r.get("icone") or "utensilio", "items": []}; sec["cats"].append(cat)
+        cat["items"].append(dict(id=r["id"], name=r["nome"], spec=r.get("especificacao") or None, qty=r["qtd"], unit=r.get("valor_unit"),
+                                 uom=r.get("unidade_medida") or None, supply=r.get("fornecimento") or None,
+                                 supplier=r.get("fornecedor") or None, note=r.get("observacao") or None))
+        mexidas.add(id(cat))
+    for f in aj["fotos"]:
+        fid, fit = f["item_id"], ("cover" if f.get("ajuste") == "cover" else "contain")
+        if f.get("removida"):
+            imgs.pop(fid, None)
+        elif f.get("tem_foto"):
+            arqs = sorted((ROOT / "ajustes" / "fotos").glob(fid + ".*"))
+            if arqs:
+                imgs[fid] = dict(src="data:image/webp;base64," + base64.b64encode(webp_bytes(arqs[0], *FOTO_OFFLINE)).decode(), fit=fit)
+        elif fid in imgs:
+            imgs[fid] = {**imgs[fid], "fit": fit}
+    sem_acento = lambda t: unicodedata.normalize("NFD", t).encode("ascii", "ignore").decode().lower()
+    for sec in secs:
+        sec["cats"] = [c for c in sec["cats"] if c["items"]]
+        for c in sec["cats"]:
+            if id(c) in mexidas:
+                c["items"].sort(key=lambda x: sem_acento(x["name"]))
+    n = len(aj["itens"]) + len(aj["fotos"])
+    print(f"   (versão offline e PDF com {n} alterações do painel, de ajustes/catalogo.json)")
+    return secs, imgs
+
+
 # 1) versão offline (um arquivo só, progresso no navegador) — também é a base do PDF
+secoes_off, images_off = aplicar_ajustes(sections, images)
 dest = OUT / "guia-compras-sou-coluna.html"
-dest.write_text(page(images), encoding="utf-8")
+dest.write_text(page(images_off, secoes_json=json.dumps(secoes_off, ensure_ascii=False)), encoding="utf-8")
 print(f"ok: {dest} ({dest.stat().st_size/1024:.0f} KB) · itens={len(seen)} · imagens={len(images)}")
 json.dump(sorted(seen), open(OUT / "ids-dos-itens.json", "w"), ensure_ascii=False, indent=1)
 
@@ -112,7 +161,8 @@ head_site = ("<script>document.documentElement.classList.add('online')</script>\
              '<script src="app.js"></script>')
 (SITE / "guia.html").write_text(page(site_images, head_site), encoding="utf-8")
 (SITE / "catalogo.js").write_text(
-    "// Gerado por build.py a partir de data.py — não editar à mão.\nwindow.SECTIONS = " + data_json + ";\n",
+    "// Gerado por build.py a partir de data.py — não editar à mão.\nwindow.SECTIONS = " + data_json + ";\n"
+    "window.FOTOS_BASE = " + json.dumps(site_images) + ";\n",
     encoding="utf-8")
 (SITE / "assets").mkdir(exist_ok=True)
 for name in ("logo-white.png", "logo-coral.png", "symbol-white.png"):

@@ -33,10 +33,42 @@
     const pedida = new URLSearchParams(location.search).get("u");
     const u = pedida ? quem.unidades.find((x) => x.id === pedida) : quem.unidades.length === 1 && !quem.franqueadora ? quem.unidades[0] : null;
     if (!u) { location.replace(quem.franqueadora ? "/painel" : "/?escolher=1"); return null; }
-    const r = await api("unidades/" + encodeURIComponent(u.id) + "/compras");
+    const [r, catalogo] = await Promise.all([api("unidades/" + encodeURIComponent(u.id) + "/compras"), api("catalogo")]);
     const itens = {};
     r.itens.forEach((x) => { itens[x.item_id] = { done: !!x.comprado, paid: x.valor_pago, qty: x.quantidade == null ? null : x.quantidade }; });
-    return { unidade: r.unidade, itens, email: quem.email, franqueadora: quem.franqueadora, varias: quem.unidades.length > 1 };
+    return { unidade: r.unidade, itens, catalogo, email: quem.email, franqueadora: quem.franqueadora, varias: quem.unidades.length > 1 };
+  }
+
+  // Junta o catálogo do guia (data.py) com as alterações da franqueadora (GET /api/catalogo).
+  // Itens editados mudam de lugar/dados mas mantêm o id (o progresso das unidades continua valendo);
+  // removidos somem; criados no painel entram na etapa/categoria escolhida. Itens em ordem alfabética.
+  function aplicarAjustes(base, imagens, aj) {
+    const secs = base.map((s) => ({ id: s.id, title: s.title, short: s.short, desc: s.desc,
+      cats: s.cats.map((c) => ({ name: c.name, key: c.key, items: c.items.map((i) => ({ ...i })) })) }));
+    const imgs = { ...imagens };
+    const lugar = {};
+    secs.forEach((s) => s.cats.forEach((c) => c.items.forEach((i) => { lugar[i.id] = { c, i }; })));
+    const linhas = (aj && aj.itens) || [];
+    for (const r of linhas) { const o = lugar[r.id]; if (o) o.c.items = o.c.items.filter((x) => x.id !== r.id); }
+    for (const r of linhas) {
+      if (r.removido) { delete imgs[r.id]; continue; }
+      const sec = secs.find((s) => s.id === r.etapa);
+      if (!sec || !r.nome) continue;
+      let cat = sec.cats.find((c) => c.name.toLowerCase() === String(r.categoria || "").toLowerCase());
+      if (!cat) { cat = { name: r.categoria, key: r.icone || "utensilio", items: [] }; sec.cats.push(cat); }
+      cat.items.push({ id: r.id, name: r.nome, spec: r.especificacao || null, qty: r.qtd, unit: r.valor_unit == null ? null : r.valor_unit,
+        uom: r.unidade_medida || null, supply: r.fornecimento || null, supplier: r.fornecedor || null, note: r.observacao || null });
+    }
+    for (const f of (aj && aj.fotos) || []) {
+      if (f.removida) delete imgs[f.item_id];
+      else if (f.tem_foto) imgs[f.item_id] = { src: "/api/foto/" + encodeURIComponent(f.item_id) + "?v=" + f.versao, fit: f.ajuste === "cover" ? "cover" : "contain" };
+      else if (imgs[f.item_id]) imgs[f.item_id] = { ...imgs[f.item_id], fit: f.ajuste === "cover" ? "cover" : "contain" };
+    }
+    secs.forEach((s) => {
+      s.cats = s.cats.filter((c) => c.items.length);
+      s.cats.forEach((c) => c.items.sort((a, b) => a.name.localeCompare(b.name, "pt-BR")));
+    });
+    return { sections: secs, images: imgs };
   }
 
   const salvarCompras = (unidadeId, linhas) => api("unidades/" + encodeURIComponent(unidadeId) + "/compras", { linhas });
@@ -56,6 +88,7 @@
       senha_curta: "A senha precisa ter pelo menos 8 caracteres.",
       codigo_invalido: "Código não encontrado. Confira com a franqueadora.",
       chave_invalida: "E-mail ou chave da franqueadora incorretos.",
+      foto_invalida: "Foto inválida ou grande demais. Use uma imagem JPG, PNG ou WebP.",
       link_invalido: "Este link de senha expirou ou já foi usado. Peça um novo à franqueadora.",
       limite: "Muitas tentativas seguidas. Aguarde alguns minutos e tente de novo.",
       sem_acesso: "Sua conta não tem acesso a isso.",
@@ -69,5 +102,5 @@
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  window.SC = { api, eu, abrirGuia, salvarCompras, definirResponsavel, sair, mensagemErro, esc };
+  window.SC = { api, eu, abrirGuia, aplicarAjustes, salvarCompras, definirResponsavel, sair, mensagemErro, esc };
 })();

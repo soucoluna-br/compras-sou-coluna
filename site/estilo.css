@@ -141,6 +141,38 @@ dialog::backdrop{background:rgba(30,25,26,.6)}
 .member small{color:var(--muted)}
 .member .bts{display:flex;gap:6px}
 
+/* ---------- catálogo (franqueadora) ---------- */
+.aviso-cat{background:var(--coral-tt);border:1px solid var(--coral-t);border-radius:12px;padding:12px 16px;font-size:14px;color:var(--ink-2);margin:22px 0 0}
+.aviso-cat b{color:var(--ink)}
+.barra select{max-width:220px}
+.cat-lista{display:grid;gap:8px;margin-bottom:50px}
+.cat-row{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px 10px 10px;display:grid;grid-template-columns:72px minmax(0,1fr) 230px auto;gap:14px;align-items:center}
+.cat-row:hover{box-shadow:0 4px 14px rgba(47,42,43,.07)}
+.cat-row.removido{opacity:.7;background:#FAF7F5}
+.cat-foto{width:72px;height:60px;border-radius:8px;background:#F7F2EF;display:grid;place-items:center;overflow:hidden}
+.cat-foto img{width:100%;height:100%;object-fit:contain;background:#fff}
+.cat-foto span{font-size:10.5px;color:var(--muted)}
+.cat-info b{display:block;font-size:14.5px;font-weight:600}
+.cat-info small{display:block;font-size:12.5px;color:var(--muted)}
+.cat-meta{font-size:12.5px;color:var(--ink-2);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.cat-valor{font-weight:600;font-size:14.5px}
+.cat-valor small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.bdg{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.bdg.h{background:var(--coral);color:#fff}
+.bdg.m{background:var(--ink);color:#fff}
+.bdg.l{background:#F4EFEC;color:var(--ink-2)}
+dialog.largo{max-width:720px}
+.dlg .grid3{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:14px}
+.dlg .grid2,.dlg .grid3{align-items:start}
+.foto-ed{display:flex;gap:16px;align-items:center}
+.foto-box{width:180px;height:144px;flex:none;border:1px solid var(--line);border-radius:10px;background:#fff;display:grid;place-items:center;overflow:hidden}
+.foto-box img{width:100%;height:100%;object-fit:contain;padding:6%}
+.foto-box.cover img{object-fit:cover;padding:0}
+.foto-box span{font-size:13px;color:var(--muted)}
+.foto-acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chk-lin{display:flex;gap:8px;align-items:center;font-size:13.5px;color:var(--ink-2);flex-basis:100%}
+.chk-lin input{width:17px;height:17px;accent-color:var(--coral)}
+
 /* ---------- celular / tablet ---------- */
 @media (max-width:900px){
   .topo{position:static}
@@ -162,5 +194,9 @@ dialog::backdrop{background:rgba(30,25,26,.6)}
   .rs .val{font-size:19px}
   .barra .esp{display:none}
   .unidades{grid-template-columns:1fr}
-  .dlg .grid2{grid-template-columns:1fr}
+  .dlg .grid2,.dlg .grid3{grid-template-columns:1fr}
+  .cat-row{grid-template-columns:64px minmax(0,1fr);gap:10px}
+  .cat-valor,.cat-acts{grid-column:2}
+  .foto-ed{flex-direction:column;align-items:stretch}
+  .foto-box{width:100%}
 }
