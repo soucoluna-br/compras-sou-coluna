@@ -30,16 +30,30 @@ jobs:
             echo "::warning::Site não publicado: falta o segredo CLOUDFLARE_API_TOKEN no GitHub (veja o README)."
             echo "PULAR=1" >> "$GITHUB_ENV"; exit 0
           fi
-          # Pega só o token do que foi colado: aceita "Bearer <token>", espaços, quebras de linha
-          # e até o comando "curl ..." de teste que a Cloudflare mostra junto do token.
-          RAW=$CLOUDFLARE_API_TOKEN
-          TOKEN=$(printf '%s' "$RAW" | grep -oE '[A-Za-z0-9_-]{30,}' | awk '{print length, $0}' | sort -rn | head -1 | cut -d' ' -f2-)
+          # Pega só o token do que foi colado: aceita "Bearer <token>", aspas, espaços, quebras de linha,
+          # caracteres invisíveis e até o comando "curl ..." de teste que a Cloudflare mostra junto do token.
+          TOKEN=$(RAW="$CLOUDFLARE_API_TOKEN" python3 -c '
+          import os, re
+          raw = os.environ["RAW"]
+          m = re.search(r"Bearer\s+(\S+)", raw)
+          tok = (m.group(1) if m else raw).strip().strip("\"\x27")
+          print("".join(c for c in tok if 33 <= ord(c) < 127 and c not in "\"\x27"))')
           [ -n "$TOKEN" ] && echo "::add-mask::$TOKEN"
           R=$(curl -sS https://api.cloudflare.com/client/v4/accounts -H "Authorization: Bearer $TOKEN")
           ID=$(echo "$R" | jq -r '.result[0].id // empty')
           if [ -z "$ID" ]; then
             echo "::error::A Cloudflare recusou o token: $(echo "$R" | jq -r '[.errors[]?.message] | join("; ")')"
-            echo "Diagnóstico (sem mostrar o token): o segredo salvo tem ${#RAW} caracteres; o trecho com cara de token tem ${#TOKEN}."
+            # diagnóstico sem mostrar o token: só a contagem de cada tipo de caractere
+            RAW="$CLOUDFLARE_API_TOKEN" python3 -c '
+          import os, unicodedata
+          r = os.environ["RAW"]
+          c = lambda f: sum(1 for x in r if f(x))
+          print("Diagnóstico:", len(r), "caracteres |", c(str.isascii) , "ASCII |",
+                c(lambda x: x.isascii() and x.isalpha()), "letras |", c(str.isdigit), "dígitos |",
+                c(lambda x: x in "_-"), "_ ou - |", c(lambda x: x == "."), "pontos |", c(str.isspace), "espaços/quebras |",
+                c(lambda x: x in "\"\x27"), "aspas |", c(lambda x: not x.isascii()), "fora do ASCII",
+                [unicodedata.name(x, "?") for x in r if not x.isascii()][:5],
+                "| começa com Bearer:", r.strip().lower().startswith("bearer"), "| tem curl/http:", ("curl" in r or "http" in r))'
             exit 1
           fi
           echo "::add-mask::$ID"
