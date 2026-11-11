@@ -52,16 +52,19 @@ for s in SECTIONS:
         cats.append(dict(name=cname, key=ckey, items=out_items))
     sections.append(dict(id=s["id"], title=s["title"], short=s["short"], desc=s["desc"], cats=cats))
 
-def jpeg_bytes(path, max_side):
+def webp_bytes(path, max_side, quality):
     im = Image.open(path)
     if max(im.size) > max_side:
         im.thumbnail((max_side, max_side), Image.LANCZOS)
     buf = BytesIO()
-    im.convert("RGB").save(buf, "JPEG", quality=84, optimize=True)
+    im.convert("RGB").save(buf, "WEBP", quality=quality, method=6)
     return buf.getvalue()
 
 
-# fotos: embutidas no HTML offline; arquivos separados no site (carrega mais rápido)
+# Fotos em WebP (bem mais leve que JPEG): o site inteiro vai num único _worker.js, que no plano gratuito
+# da Cloudflare tem limite de 3 MB, e o HTML offline também fica leve para mandar por WhatsApp/e-mail.
+FOTO_SITE = (640, 78)      # lado máximo (px), qualidade — cards e ampliação no site
+FOTO_OFFLINE = (520, 74)   # embutida no HTML offline (e no PDF)
 images, site_images = {}, {}
 img_dir = ROOT / "images"
 site_img = SITE / "img"; site_img.mkdir(parents=True, exist_ok=True)
@@ -74,12 +77,11 @@ for p in sorted(img_dir.glob("*")):
         stem, fit = stem[:-7], "cover"
     if stem not in seen:
         print("AVISO: imagem sem item correspondente:", p.name); continue
-    data = jpeg_bytes(p, 1100)
-    images[stem] = dict(src="data:image/jpeg;base64," + base64.b64encode(data).decode(), fit=fit)
-    (site_img / f"{stem}.jpg").write_bytes(data)
-    site_images[stem] = dict(src=f"img/{stem}.jpg", fit=fit)
-for old in site_img.glob("*.jpg"):
-    if old.stem not in site_images:
+    images[stem] = dict(src="data:image/webp;base64," + base64.b64encode(webp_bytes(p, *FOTO_OFFLINE)).decode(), fit=fit)
+    (site_img / f"{stem}.webp").write_bytes(webp_bytes(p, *FOTO_SITE))
+    site_images[stem] = dict(src=f"img/{stem}.webp", fit=fit)
+for old in site_img.glob("*"):
+    if old.stem not in site_images or old.suffix != ".webp":
         old.unlink()
 
 template = (ROOT / "template.html").read_text(encoding="utf-8")

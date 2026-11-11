@@ -22,7 +22,8 @@ Checklist de compras para franqueados abrirem uma nova unidade da Sou Coluna. El
 - `ferramentas/`: `package.json` com o wrangler fixado (4.152.0), usado nos testes e no backup. Fica fora da raiz para a Cloudflare não instalar nada na publicação.
 - `tests/`: `servidor_local.py` (sobe `wrangler pages dev` com D1 local zerado), `test_api.py` (regras de acesso, login, links, limites, comando de backup) e `test_site.py` (ponta a ponta no Chromium, computador e celular, mais a versão offline). `tests/banco-local/wrangler.toml` só serve para os testes consultarem/exportarem o banco local.
 - `scripts/gerar_pdf.py`: renderiza o HTML em modo impressão e gera o PDF.
-- `images/`: fotos dos produtos. O nome do arquivo é o **id do item** (lista em `out/ids-dos-itens.json`), por exemplo `enxoval-geladeira.jpg`. Com o sufixo `__cover` (`enxoval-geladeira__cover.jpg`), a foto preenche o card inteiro em vez de ficar centralizada em fundo branco. Item sem foto mostra um ícone da categoria.
+- `images/`: fotos dos produtos (originais em JPEG, até 1000 px). O nome do arquivo é o **id do item** (lista em `out/ids-dos-itens.json`), por exemplo `enxoval-geladeira.jpg`. Com o sufixo `__cover` (`enxoval-geladeira__cover.jpg`), a foto preenche o card inteiro em vez de ficar centralizada em fundo branco. Item sem foto mostra um ícone da categoria. O `build.py` converte para **WebP** (site: 640 px; HTML offline/PDF: 520 px) para o `_worker.js` caber no limite de 3 MB do plano gratuito (hoje ~1,1 MB comprimido com 82 fotos).
+- `scripts/fotos_da_planilha.py`: extrai as fotos da planilha do Drive ("Estoque e Enxoval Iniciais Franquia - SOU .xlsx", baixada em `src/drive/planilha-com-fotos.xlsx`, fora do Git). Liga cada foto ao item pela linha da aba "Enxoval Inicial" (`MAPA`) e recorta os prints de loja (Mercado Livre, Amazon) para mostrar só o produto: recorte automático + `RECORTE_MANUAL` para os casos em que ele erra. Sempre conferir as fotos novas visualmente.
 
 ## Como rodar
 
@@ -60,7 +61,7 @@ Se já existir um Chromium instalado e o `playwright install` não for possível
 
 ## Pendências (aguardando o Rossanão)
 
-1. Origem das fotos dos produtos: fotos reais de uma unidade modelo (recomendado) ou geração por IA. Para IA: GPT Image 2.5 em 4K e **só gerar com autorização explícita**.
+1. Fotos: 82 dos 130 itens já têm foto (vieram da planilha do Drive). Faltam 48: uniformes e jalecos, coador, toalhas, provador, mesa da sala de apoio, suporte de parede do adjuster, serviços (internet, softwares), todo o estoque inicial (copa, escritório, higiene e limpeza, creme de massagem), produtos da franqueadora e os itens de obra/marcenaria. Para eles: fotos reais de uma unidade modelo (recomendado) ou geração por IA (GPT Image 2.5 em 4K, **só com autorização explícita**).
 2. Produtos da franqueadora: a planilha original diz "adicionar imposto". Falta confirmar se os valores devem aparecer com imposto.
 3. Incluir ou não o restante do investimento (taxa de franquia, abertura de empresa + marketing inaugural + contratação, reserva de giro).
 

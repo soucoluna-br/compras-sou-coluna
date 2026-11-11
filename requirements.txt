@@ -1,2 +1,4 @@
 Pillow
 playwright
+numpy
+scipy
