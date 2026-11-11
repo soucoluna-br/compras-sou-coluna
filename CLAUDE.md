@@ -65,6 +65,6 @@ Se já existir um Chromium instalado e o `playwright install` não for possível
 
 ## Status do site
 
-Na conta da Cloudflare da Sou Coluna já existem o banco D1 `compras-sou-coluna` e o projeto Pages `compras-sou-coluna` (`compras-sou-coluna.pages.dev`), com o binding `DB` e o segredo `CODIGO_FRANQUEADORA`; o usuário já recebeu a chave. A publicação depende do segredo `CLOUDFLARE_API_TOKEN` no GitHub. O endereço `compras.soucoluna.com` ainda não foi ligado: mexer em DNS precisa de OK explícito do usuário.
+Na conta da Cloudflare da Sou Coluna já existem o banco D1 `compras-sou-coluna` e o projeto Pages `compras-sou-coluna` (`compras-sou-coluna.pages.dev`), com o binding `DB` e o segredo `CODIGO_FRANQUEADORA`; o usuário já recebeu a chave. O endereço `compras.soucoluna.com` está ligado ao projeto (domínio personalizado do Pages + registro CNAME `compras` → `compras-sou-coluna.pages.dev`, com proxy, criados com autorização do usuário). A publicação depende do segredo `CLOUDFLARE_API_TOKEN` no GitHub. Mudanças de DNS sempre precisam de OK explícito do usuário.
 
 Nas sessões do ambiente "compras-sou-coluna" do Claude, o token da Cloudflare fica guardado como segredo de rede para `api.cloudflare.com`: chamadas à API funcionam com `Authorization: Bearer placeholder`, porque o proxy troca pelo token real. Por isso, `wrangler pages deploy` **não funciona daqui**: o upload usa outra chave temporária, que o proxy também troca. Publique pela automação do GitHub.
