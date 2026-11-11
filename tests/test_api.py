@@ -30,8 +30,8 @@ def main():
         st, r, _ = adm.post("cadastrar", {"codigo": "chave-errada-123", "nome": "X", "email": "x@x.test", "senha": "12345678"})
         ok(st == 400 and r["erro"] == "codigo_invalido", "cadastro com código inexistente é recusado")
         t0 = time.time()
-        st, r, h = adm.post("cadastrar", {"codigo": CHAVE, "nome": "Franqueadora", "email": "ADM@SouColuna.test", "senha": "senha-adm-123"})
-        ok(st == 201, "cadastro com a chave da franqueadora cria a conta")
+        st, r, h = adm.post("cadastrar", {"codigo": " " + CHAVE.upper() + ". ", "nome": "Franqueadora", "email": "ADM@SouColuna.test", "senha": "senha-adm-123"})
+        ok(st == 201, "cadastro com a chave da franqueadora cria a conta (mesmo com ponto final, espaços e maiúsculas)")
         ck = h.get("Set-Cookie", "")
         ok("HttpOnly" in ck and "SameSite=Lax" in ck, "cookie de sessão é HttpOnly e SameSite")
         st, eu, _ = adm.get("eu")
@@ -122,6 +122,8 @@ def main():
 
         # ---------- franqueadora esqueceu a senha ----------
         ok(Cliente(B).post("redefinir-com-chave", {"email": "adm@soucoluna.test", "chave": "errada-errada-1", "senha": "nova-adm-123"})[0] == 401, "chave errada")
+        ok(Cliente(B).post("cadastrar", {"codigo": CHAVE[:-1], "nome": "X", "email": "quase@x.test", "senha": "12345678"})[1]["erro"] == "codigo_invalido",
+           "chave quase certa (faltando um caractere) não vale")
         ok(Cliente(B).post("redefinir-com-chave", {"email": "bruno@unidade.test", "chave": CHAVE, "senha": "nova-bru-123"})[0] == 401, "chave não troca senha de franqueado")
         ok(Cliente(B).post("redefinir-com-chave", {"email": "adm@soucoluna.test", "chave": CHAVE, "senha": "nova-adm-123"})[0] == 200, "franqueadora troca a própria senha com a chave")
 

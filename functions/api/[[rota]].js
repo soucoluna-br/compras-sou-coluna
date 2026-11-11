@@ -56,6 +56,9 @@ function iguais(a, b) {
   return d === 0;
 }
 const iguaisTexto = (a, b) => iguais(enc.encode(String(a)), enc.encode(String(b)));
+// chave da franqueadora: ignora maiúsculas e pontuação/espaços nas pontas (ex.: o ponto final de uma frase copiada)
+const normChave = (s) => String(s || "").trim().replace(/^[^0-9A-Za-z]+|[^0-9A-Za-z]+$/g, "").toLowerCase();
+const chaveConfere = (digitada, chave) => !!chave && chave.length >= 12 && iguaisTexto(normChave(digitada), normChave(chave));
 
 function json(obj, status = 200, extra = {}) {
   return new Response(JSON.stringify(obj), {
@@ -210,7 +213,7 @@ rota("POST", "/cadastrar", async (c) => {
   const nome = texto(c.body.nome, 120, true), e = email(c.body.email), senha = senhaNova(c.body.senha);
   await limitar(c.env, "cadastro-ip:" + ip(c.request), 15, 3600);
   const chave = c.env.CODIGO_FRANQUEADORA;
-  const ehFranqueadora = !!chave && chave.length >= 12 && iguaisTexto(bruto, chave);
+  const ehFranqueadora = chaveConfere(bruto, chave);
   let unidade = null;
   if (!ehFranqueadora) {
     unidade = await c.env.DB.prepare("SELECT id FROM unidades WHERE codigo = ?1").bind(normCodigo(bruto)).first();
@@ -268,7 +271,7 @@ rota("POST", "/redefinir-com-chave", async (c) => {
   await limitar(c.env, "chave-ip:" + ip(c.request), 5, 3600);
   const chave = c.env.CODIGO_FRANQUEADORA;
   const u = await c.env.DB.prepare("SELECT id FROM usuarios WHERE email = ?1 AND franqueadora = 1").bind(e).first();
-  if (!chave || chave.length < 12 || !iguaisTexto(String(c.body.chave || "").trim(), chave) || !u) throw new Erro(401, "chave_invalida");
+  if (!chaveConfere(c.body.chave, chave) || !u) throw new Erro(401, "chave_invalida");
   await definirSenha(c.env, u.id, senha);
   return json({ ok: true }, 200, { "Set-Cookie": await criarSessao(c.env, c.url, u.id) });
 });
