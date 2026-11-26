@@ -5,6 +5,7 @@ Checklist de compras para franqueados abrirem uma nova unidade da Sou Coluna. El
 - **Site com login** (`site/` + `functions/`, Cloudflare Pages + banco D1, plano gratuito): o franqueado entra com e-mail e senha e vê só a(s) unidade(s) dele; o progresso fica no banco. A franqueadora tem um painel (`site/painel.html`) com todas as unidades. Passo a passo para colocar no ar: `README.md`.
 - **Offline** (`out/guia-compras-sou-coluna.html`): página única e autossuficiente. O franqueado marca o item como comprado, informa o valor pago e acompanha o andamento (% de itens, valor investido, economia ou estouro em relação à previsão). O estado fica salvo no `localStorage` do navegador. Também tem copiar resumo, exportar CSV, backup/restauração em JSON e impressão.
 - **Impressa** (`out/Guia-de-Compras-Sou-Coluna.pdf`): capa, página "Como usar" com tabela de totais e os cards com caixa de marcação e linhas para valor pago e data.
+- **Lista compacta** (`out/Lista-de-Compras-Sou-Coluna.pdf`, 4 páginas): todos os itens em duas colunas com caixa de marcação, miniatura (ou ícone da categoria), quantidade sugerida e valor estimado, para mandar a quem não usa o site. Layout em `template-lista.html` (fontes da marca embutidas de `assets/fonts/`), montada pelo `build.py` em `out/lista-compras-sou-coluna.html` e convertida pelo `gerar_pdf.py`, com as mesmas alterações do painel (`ajustes/`).
 
 ## Estrutura
 

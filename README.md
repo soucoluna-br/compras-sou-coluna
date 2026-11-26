@@ -7,6 +7,7 @@ Checklist de compras para abrir uma unidade Sou Coluna, em três versões gerada
 | **Site com login** (`site/` + `functions/`) | O franqueado entra com e-mail e senha, marca as compras e anota os valores. A franqueadora acompanha todas as unidades num painel. | Banco de dados na Cloudflare (D1), com cópia semanal neste repositório |
 | **HTML offline** (`out/guia-compras-sou-coluna.html`) | Arquivo único para mandar por e-mail/WhatsApp, sem login. | No navegador de quem abriu |
 | **PDF** (`out/Guia-de-Compras-Sou-Coluna.pdf`) | Versão impressa, com caixas de marcação e linhas para valor e data. | No papel |
+| **Lista compacta em PDF** (`out/Lista-de-Compras-Sou-Coluna.pdf`) | 4 páginas com todos os itens, foto, quantidade, valor estimado e caixa para marcar. Para mandar a quem não usa o site. | No papel |
 
 O site roda no **plano gratuito da Cloudflare** (Pages + D1), na conta da Sou Coluna. Ele não "dorme" por falta de uso, não apaga dados por inatividade e os limites gratuitos ficam muito acima do que o guia usa.
 
